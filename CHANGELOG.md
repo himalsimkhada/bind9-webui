@@ -4,6 +4,20 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] - 2026-09-04
+
+### Added
+
+- **Password protection** — set `WEBUI_PASSWORD` to require a shared password to use the whole UI. All `/api/*` endpoints return `401` when unauthenticated. Empty password disables auth entirely. (`SECRET_KEY` signs the session cookie.)
+- **Login page** — shows a short message explaining 30-minute auto-logout behavior.
+- **Remember me (30 min)** — a *Remember me* checkbox persists the login for 30 minutes then auto-logs-out; unchecked uses a browser-session cookie that ends on browser close.
+- **Log out button** in the nav bar.
+
+### Changed
+
+- **Zones page layout** — Zones / Host Mapper / Zone View boxes given more breathing room; zone list scrolls independently so the mapper and detail views stay tidy.
+- **Lighter dark mode** — replaced the near-black `#0f1117` with a Google-style `#202124` background.
+
 ## [0.4.1] - 2026-09-04
 
 ### Fixed (Docker / web-UI container)

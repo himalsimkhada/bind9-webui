@@ -1,7 +1,20 @@
-from flask import Flask, jsonify, request, render_template
+import os
+from datetime import timedelta
+
+from flask import Flask, jsonify, request, render_template, session
 import bind_manager as bm
 
 app = Flask(__name__)
+
+# Password gate: if WEBUI_PASSWORD is empty/not set, authentication is disabled.
+WEBUI_PASSWORD = os.environ.get("WEBUI_PASSWORD", "").strip()
+app.secret_key = os.environ.get("SECRET_KEY", "bind9-webui-dev-secret-change-me")
+# "Remember me" sessions auto-logout after 30 minutes.
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+
+
+def is_authenticated():
+    return bool(session.get("auth"))
 
 
 def _ok(data=None, msg=None):
@@ -17,9 +30,52 @@ def _err(msg, code=400):
     return jsonify({"ok": False, "error": str(msg)}), code
 
 
+@app.before_request
+def protect_endpoints():
+    # Only enforce when a password is configured.
+    if not WEBUI_PASSWORD:
+        return None
+    # Allow the auth endpoints and static assets.
+    if request.endpoint in ("index", "static", "api_login", "api_session"):
+        return None
+    if request.path.startswith("/api/") and not is_authenticated():
+        return _err("Unauthorized", code=401)
+    return None
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+# ── Authentication ──────────────────────────────────────────────────────────
+
+@app.route("/api/session")
+def api_session():
+    if not WEBUI_PASSWORD:
+        return _ok({"auth": True, "auth_required": False})
+    return _ok({"auth": is_authenticated(), "auth_required": True})
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    if not WEBUI_PASSWORD:
+        return _err("Authentication is not enabled")
+    data = request.json or {}
+    password = data.get("password", "")
+    if password != WEBUI_PASSWORD:
+        return _err("Incorrect password", code=401)
+    session["auth"] = True
+    # Remember me -> persistent cookie that auto-expires in 30 minutes.
+    session.permanent = bool(data.get("remember", False))
+    session.permanent_session_lifetime = app.config["PERMANENT_SESSION_LIFETIME"]
+    return _ok({"auth": True, "auth_required": True})
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    session.clear()
+    return _ok(msg="Logged out")
 
 
 # ── Dashboard ───────────────────────────────────────────────────────────────

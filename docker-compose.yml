@@ -32,6 +32,8 @@ services:
       BIND_CONF_DIR: /etc/bind
       ZONE_DIR: /etc/bind
       LOG_FILE: ${LOG_FILE:-/var/log/bind/named.log}
+      WEBUI_PASSWORD: ${WEBUI_PASSWORD:-}
+      SECRET_KEY: ${SECRET_KEY:-}
     extra_hosts:
       # Make host.docker.internal resolve to the Docker host gateway, so
       # RNDC_HOST=host.docker.internal reaches host/remote BIND on TCP 953.

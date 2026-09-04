@@ -108,6 +108,14 @@ All web-UI container settings are configured via the `.env` file (see
 | `RNDC_PORT` | `953` | rndc TCP port when `RNDC_HOST` is set |
 | `RNDC_KEY` | `$BIND_CONF_DIR/rndc.key` | rndc key file path |
 | `LOG_FILE` | *(auto)* | Path to a BIND log file to tail (containers) instead of `journalctl` |
+| `WEBUI_PASSWORD` | *(empty = auth off)* | Single shared password required to use the UI |
+| `SECRET_KEY` | *(dev default)* | Secret used to sign the session cookie; set a random value |
+
+> **Access protection:** Set `WEBUI_PASSWORD` to require a password. The login
+> screen has a *Remember me* checkbox that persists the session for **30 minutes**
+> then auto-logs-out; without it the session ends when the browser closes. A
+> **Log out** button appears in the nav bar. If `WEBUI_PASSWORD` is empty,
+> authentication is disabled entirely.
 
 ## Manual Setup
 
@@ -127,8 +135,8 @@ sudo systemctl start named
 python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 
-# Run
-./venv/bin/python3 app.py
+# Run (password-protected; omit WEBUI_PASSWORD to disable auth)
+WEBUI_PASSWORD='your-password' SECRET_KEY='a-long-random-string' ./venv/bin/python3 app.py
 ```
 
 ## Systemd Service

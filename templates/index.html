@@ -9,18 +9,36 @@
 <body>
 <header>
   <h1>BIND9 <span class="dim">Web UI</span></h1>
-  <div class="header-right">
-    <nav>
-      <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-      <button class="nav-btn" data-view="zones">Zones</button>
-      <button class="nav-btn" data-view="config">Configuration</button>
-      <button class="nav-btn" data-view="logs">Logs</button>
-    </nav>
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">&#9790;</button>
-  </div>
-</header>
+    <div class="header-right">
+      <nav>
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="zones">Zones</button>
+        <button class="nav-btn" data-view="config">Configuration</button>
+        <button class="nav-btn" data-view="logs">Logs</button>
+      </nav>
+      <button class="nav-btn logout-btn hidden" id="logout-btn" onclick="logout()" title="Log out">Log out</button>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">&#9790;</button>
+    </div>
+  </header>
 
-<main>
+<!-- Login (shown when not authenticated) -->
+<section id="view-login" class="view login-view hidden">
+  <div class="card login-card">
+    <h2 class="login-title">BIND9 <span class="dim">Web UI</span></h2>
+    <p class="login-msg">Enter the UI password to continue. Sessions auto-logout after 30 minutes.</p>
+    <div class="login-form">
+      <label for="login-password">Password</label>
+      <input type="password" id="login-password" placeholder="UI password" autocomplete="current-password" />
+      <label class="login-remember">
+        <input type="checkbox" id="login-remember" /> Remember me for 30 minutes
+      </label>
+      <button id="login-btn" onclick="login()">Log in</button>
+      <div id="login-error" class="status-error hidden"></div>
+    </div>
+  </div>
+</section>
+
+<main id="app-main">
   <!-- Dashboard -->
   <section id="view-dashboard" class="view active">
     <div class="card">
@@ -74,10 +92,12 @@
           <button onclick="createZone()">Create</button>
           <button class="secondary" onclick="hideAddZone()">Cancel</button>
         </div>
-        <table id="zones-table">
-          <thead><tr><th>Zone</th><th>Type</th><th>Source</th><th></th></tr></thead>
-          <tbody id="zones-body"></tbody>
-        </table>
+        <div class="zones-table-wrap">
+          <table id="zones-table">
+            <thead><tr><th>Zone</th><th>Type</th><th>Source</th><th></th></tr></thead>
+            <tbody id="zones-body"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card">

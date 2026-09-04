@@ -11,7 +11,66 @@ function api(method, path, body) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
   }
-  return fetch(path, opts).then(r => r.json());
+  return fetch(path, opts).then(r => {
+    if (r.status === 401) showLogin();
+    return r.json();
+  });
+}
+
+// ── Auth ────────────────────────────────────────────────────────────────
+
+function showLogin() {
+  document.querySelector("nav").classList.add("hidden");
+  $("logout-btn").classList.add("hidden");
+  $("app-main").classList.add("hidden");
+  $("view-login").classList.remove("hidden");
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  $("login-password").focus();
+}
+
+function showApp() {
+  document.querySelector("nav").classList.remove("hidden");
+  $("logout-btn").classList.remove("hidden");
+  $("view-login").classList.add("hidden");
+  $("app-main").classList.remove("hidden");
+  refreshStatus();
+}
+
+function checkSession() {
+  api("GET", "/api/session").then(r => {
+    if (r.ok && r.data && r.data.auth) {
+      showApp();
+    } else {
+      showLogin();
+    }
+  });
+}
+
+function login() {
+  const password = $("login-password").value;
+  const remember = $("login-remember").checked;
+  const btn = $("login-btn");
+  $("login-error").classList.add("hidden");
+  btn.disabled = true;
+  btn.textContent = "Checking...";
+  api("POST", "/api/login", { password, remember }).then(r => {
+    btn.disabled = false;
+    btn.textContent = "Log in";
+    if (r.ok) {
+      showApp();
+      toast("Logged in", true);
+    } else {
+      $("login-error").textContent = r.error || "Login failed";
+      $("login-error").classList.remove("hidden");
+      $("login-password").value = "";
+      $("login-password").focus();
+    }
+  });
+}
+
+function logout() {
+  api("POST", "/api/logout");
+  showLogin();
 }
 
 function toast(msg, ok) {
@@ -47,6 +106,7 @@ setTheme(getTheme());
 
 document.querySelectorAll(".nav-btn").forEach(btn => {
   btn.addEventListener("click", () => {
+    if (!btn.dataset.view) return; // skip e.g. the logout button
     document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
     btn.classList.add("active");
@@ -418,4 +478,8 @@ function loadLogs() {
 
 // ── Init ────────────────────────────────────────────────────────────────
 
-refreshStatus();
+$("login-password").addEventListener("keydown", e => {
+  if (e.key === "Enter") login();
+});
+
+checkSession();

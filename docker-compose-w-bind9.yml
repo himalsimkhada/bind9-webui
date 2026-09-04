@@ -46,6 +46,8 @@ services:
       LOG_FILE: /var/log/bind/named.log
       ZONE_DIR: /etc/bind/zones
       ZONE_OWNER: "bind:bind"   # named runs as 'bind'; make zone files writable
+      WEBUI_PASSWORD: ${WEBUI_PASSWORD:-}
+      SECRET_KEY: ${SECRET_KEY:-}
     volumes:
       - ./docker/bind/named.conf.local:/etc/bind/named.conf.local:rw
       - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:ro
