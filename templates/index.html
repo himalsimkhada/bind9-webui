@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIND9 Web UI</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>BIND9 <span class="dim">Web UI</span></h1>
+  <nav>
+    <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+    <button class="nav-btn" data-view="zones">Zones</button>
+    <button class="nav-btn" data-view="config">Config</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Dashboard -->
+  <section id="view-dashboard" class="view active">
+    <div class="card-row">
+      <div class="card">
+        <h3>Server Status</h3>
+        <pre id="status-output">Loading...</pre>
+        <div class="card-actions">
+          <button onclick="refreshStatus()">Refresh</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Controls</h3>
+        <div class="btn-group">
+          <button onclick="rndcAction('reload')">Reload Config</button>
+          <button onclick="rndcAction('flush')">Flush Cache</button>
+          <button onclick="rndcAction('stats')">Stats</button>
+          <button onclick="rndcAction('querylog')">Query Log</button>
+        </div>
+        <pre id="control-output" class="small-output"></pre>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Config Check</h3>
+      <button onclick="checkConfig()">Run named-checkconf</button>
+      <pre id="config-check-output"></pre>
+    </div>
+  </section>
+
+  <!-- Zones -->
+  <section id="view-zones" class="view">
+    <div class="card">
+      <h3>Zones <button class="right" onclick="showAddZone()">+ Add Zone</button></h3>
+      <div id="add-zone-form" class="inline-form hidden">
+        <input id="new-zone-name" placeholder="example.com" />
+        <select id="new-zone-type">
+          <option value="master">Master</option>
+          <option value="slave">Slave</option>
+        </select>
+        <button onclick="createZone()">Create</button>
+        <button class="secondary" onclick="hideAddZone()">Cancel</button>
+      </div>
+      <table id="zones-table">
+        <thead><tr><th>Zone</th><th>Type</th><th>Source</th><th></th></tr></thead>
+        <tbody id="zones-body"></tbody>
+      </table>
+    </div>
+
+    <div id="zone-detail" class="card hidden">
+      <h3 id="zone-detail-name">Zone Records</h3>
+      <div class="inline-form">
+        <input id="rec-name" placeholder="name" />
+        <select id="rec-type">
+          <option>A</option><option>AAAA</option><option>CNAME</option>
+          <option>MX</option><option>TXT</option><option>NS</option>
+          <option>PTR</option><option>SRV</option>
+        </select>
+        <input id="rec-value" placeholder="value" />
+        <input id="rec-ttl" type="number" value="3600" style="width:80px" />
+        <button onclick="addRecord()">Add</button>
+      </div>
+      <table>
+        <thead><tr><th>Name</th><th>TTL</th><th>Type</th><th>Value</th><th></th></tr></thead>
+        <tbody id="records-body"></tbody>
+      </table>
+      <pre id="zone-raw" class="raw-zone hidden"></pre>
+      <div class="card-actions">
+        <button class="secondary" onclick="toggleRaw()">Show Raw</button>
+        <button class="secondary" onclick="checkZone()">Check Zone</button>
+        <button class="danger" onclick="deleteZone()">Delete Zone</button>
+        <pre id="zone-check-output" class="small-output"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Config -->
+  <section id="view-config" class="view">
+    <div class="card">
+      <h3>named.conf.options</h3>
+      <textarea id="config-editor" rows="20" spellcheck="false"></textarea>
+      <div class="card-actions">
+        <button onclick="saveConfig()">Save Options</button>
+        <button class="secondary" onclick="loadConfig()">Reload</button>
+        <pre id="config-save-output" class="small-output"></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+[Unit]
+Description=BIND9 Web UI
+After=network.target named.service
+Requires=named.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/himal/workspace/bind9-web-ui
+ExecStart=/home/himal/workspace/bind9-web-ui/venv/bin/python3 app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
