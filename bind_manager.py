@@ -3,13 +3,35 @@ import re
 import subprocess
 from pathlib import Path
 
-BIND_CONF_DIR = "/etc/bind"
+BIND_CONF_DIR = os.environ.get("BIND_CONF_DIR", "/etc/bind")
 NAMED_CONF = f"{BIND_CONF_DIR}/named.conf"
 NAMED_CONF_OPTIONS = f"{BIND_CONF_DIR}/named.conf.options"
 NAMED_CONF_LOCAL = f"{BIND_CONF_DIR}/named.conf.local"
 NAMED_CONF_DEFAULT_ZONES = f"{BIND_CONF_DIR}/named.conf.default-zones"
 ZONE_CACHE_DIR = "/var/cache/bind"
+# Where zone data files (db.<zone>) are written. Defaults to BIND_CONF_DIR for
+# bare-metal; override to a shared writable volume in Docker (ZONE_DIR).
+ZONE_DIR = os.environ.get("ZONE_DIR", BIND_CONF_DIR)
 RNDCTIMEOUT = 5
+
+_IS_ROOT = hasattr(os, "geteuid") and os.geteuid() == 0
+
+
+def _sudo():
+    """Prefix for privileged commands. Root (Docker) needs no sudo, bare-metal user does."""
+    return "" if _IS_ROOT else "sudo "
+
+
+def _rndc_cmd(command):
+    """Build an rndc command line, connecting over TCP when RNDC_HOST is set."""
+    rndc = f"{_sudo()}rndc"
+    host = os.environ.get("RNDC_HOST", "").strip()
+    port = os.environ.get("RNDC_PORT", "953").strip()
+    key = os.environ.get("RNDC_KEY", f"{BIND_CONF_DIR}/rndc.key")
+    if host:
+        rndc += f" -s {host} -p {port}"
+    rndc += f" -k {key}"
+    return f"{rndc} {command}"
 
 
 def _run(cmd, check=False):
@@ -25,7 +47,7 @@ def _run(cmd, check=False):
 
 
 def rndc(command):
-    out, err, rc = _run(f"sudo rndc {command}")
+    out, err, rc = _run(_rndc_cmd(command))
     if rc != 0:
         raise RuntimeError(err or f"rndc {command} failed")
     return out
@@ -37,16 +59,23 @@ def _read_file(path):
     except FileNotFoundError:
         return ""
     except PermissionError:
-        out, _, _ = _run(f"sudo cat {path}")
+        out, _, _ = _run(f"{_sudo()}cat {path}")
         return out
 
 
 def _write_file(path, content):
     tmp = f"/tmp/bind_ui_{os.getpid()}.conf"
     Path(tmp).write_text(content)
-    _run(f"sudo cp {tmp} {path}", check=True)
-    _run(f"sudo chmod 644 {path}")
+    _run(f"{_sudo()}cp {tmp} {path}", check=True)
+    _run(f"{_sudo()}chmod 644 {path}")
     os.unlink(tmp)
+
+
+def _chown_zone(path):
+    """Make a zone file writable by the BIND runtime user (Docker)."""
+    owner = os.environ.get("ZONE_OWNER", "").strip()
+    if owner:
+        _run(f"{_sudo()}chown {owner} {path}")
 
 
 # ── Config File Read/Write ──────────────────────────────────────────────────
@@ -109,10 +138,13 @@ def _resolve_zone_path(zone_file):
     path = f"{BIND_CONF_DIR}/{zone_file}"
     if os.path.exists(path):
         return path
+    path = f"{ZONE_DIR}/{zone_file}"
+    if os.path.exists(path):
+        return path
     path = f"{ZONE_CACHE_DIR}/{zone_file}"
     if os.path.exists(path):
         return path
-    return f"{BIND_CONF_DIR}/{zone_file}"
+    return f"{ZONE_DIR}/{zone_file}"
 
 
 def get_zone_file(zone_name):
@@ -135,6 +167,7 @@ def write_zone_file(zone_name, content):
     content = content + "\n" if not content.endswith("\n") else content
     path = get_zone_path(zone_name)
     _write_file(path, content)
+    _chown_zone(path)
     rndc("reload")
     return path
 
@@ -225,7 +258,7 @@ def add_zone(zone_name, zone_type="master", records=None):
         raise RuntimeError(f"Zone {zone_name} already exists")
 
     zone_file = f"db.{zone_name}"
-    zone_path = f"{BIND_CONF_DIR}/{zone_file}"
+    zone_path = f"{ZONE_DIR}/{zone_file}"
 
     if records is None:
         records = [
@@ -239,8 +272,9 @@ def add_zone(zone_name, zone_type="master", records=None):
     }
     content = build_zone_file(zone_name, records, soa=default_soa)
     _write_file(zone_path, content)
+    _chown_zone(zone_path)
 
-    zone_block = f'zone "{zone_name}" {{\n    type {zone_type};\n    file "{BIND_CONF_DIR}/{zone_file}";\n}};\n\n'
+    zone_block = f'zone "{zone_name}" {{\n    type {zone_type};\n    file "{zone_path}";\n}};\n\n'
 
     existing = _read_file(NAMED_CONF_LOCAL)
     _write_file(NAMED_CONF_LOCAL, existing + zone_block)
@@ -272,8 +306,8 @@ def remove_zone(zone_name):
 
     if zone["file"]:
         fpath = _resolve_zone_path(zone['file'])
-        if os.path.exists(fpath) and fpath.startswith(BIND_CONF_DIR):
-            _run(f"sudo rm {fpath}")
+        if os.path.exists(fpath) and (fpath.startswith(BIND_CONF_DIR) or fpath.startswith(ZONE_DIR)):
+            _run(f"{_sudo()}rm {fpath}")
 
     rndc("reload")
     return True
@@ -339,6 +373,7 @@ def update_zone_records(zone_name, records):
 
     zone_path = _resolve_zone_path(zone['file'])
     _write_file(zone_path, content)
+    _chown_zone(zone_path)
 
     rndc("reload")
     return True
@@ -462,14 +497,14 @@ def flush_cache():
 
 
 def get_stats():
-    out, _, rc = _run("sudo rndc stats")
+    out, _, rc = _run(_rndc_cmd("stats"))
     stats_file = "/var/cache/bind/named.stats"
     content = _read_file(stats_file)
     return content
 
 
 def get_status():
-    out, _, rc = _run("sudo rndc status")
+    out, _, rc = _run(_rndc_cmd("status"))
     return out
 
 
@@ -514,21 +549,27 @@ def query_log(status=True):
 # ── Logs ────────────────────────────────────────────────────────────────────
 
 def get_logs(lines=100, query=""):
-    cmd = f"sudo journalctl -u named --no-pager -n {lines}"
+    log_file = os.environ.get("LOG_FILE", "").strip()
+    if log_file:
+        out, _, _ = _run(f"tail -n {lines} {log_file}")
+    else:
+        out, _, _ = _run(f"{_sudo()}journalctl -u named --no-pager -n {lines}")
+        if not out:
+            out, _, _ = _run(f"{_sudo()}tail -n {lines} /var/log/syslog 2>/dev/null | grep -i named")
+        if not out and _IS_ROOT:
+            out, _, _ = _run(f"tail -n {lines} /var/lib/bind/named.log 2>/dev/null")
     if query:
-        cmd += f" | grep -i '{query}'"
-    out, _, _ = _run(cmd)
+        filtered = [ln for ln in out.splitlines() if query.lower() in ln.lower()]
+        out = "\n".join(filtered)
     if not out:
-        out, _, _ = _run(f"sudo tail -n {lines} /var/log/syslog 2>/dev/null | grep -i named")
-    if not out:
-        out = "No logs found. Ensure named is running as a systemd service."
+        out = "No logs found."
     return out
 
 
 # ── Validation ──────────────────────────────────────────────────────────────
 
 def check_config():
-    out, err, rc = _run("sudo named-checkconf /etc/bind/named.conf")
+    out, err, rc = _run(f"{_sudo()}named-checkconf {NAMED_CONF}")
     return {"valid": rc == 0, "error": err or out}
 
 
@@ -539,5 +580,5 @@ def check_zone(zone_name):
         raise RuntimeError(f"Zone {zone_name} not found")
 
     zone_path = _resolve_zone_path(zone['file'])
-    out, err, rc = _run(f"sudo named-checkzone {zone_name} {zone_path}")
+    out, err, rc = _run(f"{_sudo()}named-checkzone {zone_name} {zone_path}")
     return {"valid": rc == 0, "output": out, "error": err}

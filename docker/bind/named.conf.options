@@ -1,0 +1,28 @@
+// BIND9 Web UI — global options for the dockerized BIND9 server.
+options {
+    directory "/var/cache/bind";
+
+    recursion yes;
+    allow-query { any; };
+    dnssec-validation auto;
+
+    listen-on port 53 { any; };
+    listen-on-v6 port 53 { any; };
+};
+
+// Write logs to stdout (`docker logs`) and to a shared file that the web UI
+// reads via LOG_FILE=/var/log/bind/named.log.
+logging {
+    channel default_file {
+        file "/var/log/bind/named.log" versions 3 size 5m;
+        severity info;
+        print-category yes;
+        print-time yes;
+    };
+    channel default_syslog {
+        syslog daemon;
+        severity info;
+    };
+    category default { default_syslog; default_file; };
+    category queries { default_syslog; default_file; };
+};

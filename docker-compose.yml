@@ -1,0 +1,39 @@
+# BIND9 Web UI — web-UI container ONLY.
+#
+# This runs just the web UI and manages an EXISTING BIND9 server that lives
+# OUTSIDE the container (the host, or a remote machine) over the rndc TCP
+# control channel. It mounts the host's /etc/bind so it can read/write the
+# same config and zone files that `named` uses.
+#
+# Note: a container cannot use the host's local rndc UNIX control socket, so
+# your host/remote `named` must listen on TCP 953. If your `named.conf` does
+# not already expose it, add a block like:
+#
+#   controls { inet 0.0.0.0 port 953 allow { any; } keys { "rndc-key"; }; };
+#
+# Optional host-config values come from an `.env` file (copy .env.example ->
+# .env and edit). Otherwise sensible defaults are used.
+#
+# Usage:
+#   docker compose up -d --build
+# Then open http://localhost:5000
+
+services:
+  webui:
+    build: .
+    container_name: bind9-webui
+    restart: unless-stopped
+    ports:
+      - "${WEBUI_PORT:-5000}:5000"
+    environment:
+      RNDC_HOST: ${RNDC_HOST}            # IP/hostname of the host/remote named
+      RNDC_PORT: ${RNDC_PORT:-953}
+      RNDC_KEY: /etc/bind/rndc.key
+      BIND_CONF_DIR: /etc/bind
+      ZONE_DIR: /etc/bind
+      LOG_FILE: ${LOG_FILE:-}
+    volumes:
+      # Mount the host's BIND config dir (config + zone files + rndc.key).
+      - /etc/bind:/etc/bind
+      # Optional: mount a host BIND log dir for the Logs tab (set LOG_FILE).
+      # - ${HOST_BIND_LOG_DIR:-/var/log/bind}:/var/log/bind

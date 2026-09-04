@@ -4,6 +4,24 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] - 2026-09-04
+
+### Added
+
+- **Docker support** — the web UI can now run in a container and manage BIND via `rndc` over TCP, in addition to the existing bare-metal mode
+  - `Dockerfile` — container image for the web UI (runs as root, ships `rndc`/`dig`/`named-check*`)
+  - `docker-compose-w-bind9.yml` — full stack: official `ubuntu/bind9` container + web-UI container, sharing config and writable zone/log volumes
+  - `docker-compose.yml` — web-UI only, mounting the host's `/etc/bind` to manage an existing host/remote BIND over TCP rndc (config via `.env`, see `.env.example`)
+  - `docker/bind/` — named config + `rndc.key` for the BIND container
+
+### Changed
+
+- `bind_manager.py` is now transport- and privilege-aware via environment variables:
+  - `RNDC_HOST` / `RNDC_PORT` / `RNDC_KEY` — drive `rndc` over TCP when set, otherwise use the local control socket
+  - `BIND_CONF_DIR` / `ZONE_DIR` / `ZONE_OWNER` — relocate config and zone files and chown new zones (e.g. `bind:bind` in Docker)
+  - `LOG_FILE` — tail a BIND log file in containers instead of `journalctl`
+  - `sudo` is only prepended when not running as root (containers run as root)
+
 ## [0.3.0] - 2026-09-04
 
 ### Added

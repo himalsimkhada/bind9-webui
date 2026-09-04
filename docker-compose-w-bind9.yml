@@ -1,0 +1,58 @@
+# BIND9 Web UI — full stack: BIND9 name server + web UI container.
+#
+# Usage:
+#   docker compose -f docker-compose-w-bind9.yml up -d --build
+# Then open http://localhost:5000
+#
+# The web-UI container manages the BIND9 container over the rndc control
+# channel (TCP 953) and shares /etc/bind via host-mounted files + named
+# volumes for zone data and logs.
+#
+# If you instead run BIND on the host (bare-metal), use the web-UI-only
+# docker-compose.yml (see the README).
+
+services:
+  bind9:
+    image: ubuntu/bind9:9.20-26.04
+    container_name: bind9
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "953:953"          # rndc control channel for the web-UI container
+    volumes:
+      - ./docker/bind/named.conf:/etc/bind/named.conf:ro
+      - ./docker/bind/named.conf.options:/etc/bind/named.conf.options:ro
+      - ./docker/bind/named.conf.local:/etc/bind/named.conf.local:rw
+      - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:ro
+      - ./docker/bind/rndc.key:/etc/bind/rndc.key:ro
+      - bind-zones:/etc/bind/zones       # writable area for zone files (db.<zone>)
+      - bind-logs:/var/log/bind          # named.log read by the web UI
+    command: ["-4"]
+
+  webui:
+    build: .
+    container_name: bind9-webui
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      - bind9
+    environment:
+      RNDC_HOST: bind9          # talk to the BIND container over TCP
+      RNDC_PORT: "953"
+      RNDC_KEY: /etc/bind/rndc.key
+      BIND_CONF_DIR: /etc/bind
+      LOG_FILE: /var/log/bind/named.log
+      ZONE_DIR: /etc/bind/zones
+      ZONE_OWNER: "bind:bind"   # named runs as 'bind'; make zone files writable
+    volumes:
+      - ./docker/bind/named.conf.local:/etc/bind/named.conf.local:rw
+      - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:ro
+      - ./docker/bind/rndc.key:/etc/bind/rndc.key:ro
+      - bind-zones:/etc/bind/zones
+      - bind-logs:/var/log/bind
+
+volumes:
+  bind-zones:
+  bind-logs:

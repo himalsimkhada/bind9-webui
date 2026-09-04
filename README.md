@@ -19,16 +19,79 @@ A lightweight web interface for managing BIND9 (named) DNS server. Runs on top o
 - Linux with BIND9 installed (`apt install bind9 bind9-dnsutils`)
 - Python 3.10+
 - `sudo` access (for rndc and named config files)
+- Docker is optional — only required for the containerized deployment.
 
-## Quick Start
+## Deployment Options
+
+The web UI is deliberately flexible and can run against **either** a bare-metal
+BIND (the default) **or** an Ubuntu BIND container — without code changes. It
+talks to `named` through whichever transport you configure:
+
+- **Local (bare-metal):** `rndc` over the local UNIX control socket, reading/writing `/etc/bind/`.
+- **Remote (container or host over network):** `rndc` over TCP port 953 with a shared `rndc.key`.
+
+### Option 1 — Bare-metal (default)
 
 ```bash
 git clone https://github.com/himalsimkhada/bind9-webui.git
 cd bind9-webui
 sudo bash install.sh
 ```
+Web UI at `http://localhost:5000`.
 
-Web UI will be available at `http://localhost:5000`.
+### Option 2 — Full Docker stack (BIND + web UI, two containers)
+
+```bash
+docker compose -f docker-compose-w-bind9.yml up -d --build
+```
+- `bind9` — the official `ubuntu/bind9` container (port 53 UDP/TCP, plus TCP 953 for rndc).
+- `webui` — this project's image (port 5000).
+
+Both share `./docker/bind/` config (`named.conf`, `rndc.key`, …) and two named
+volumes (`bind-zones` for zone data files, `bind-logs` for `named.log`). The
+web-UI container drives BIND over `rndc -s bind9 -p 953`.
+
+> **rndc key:** a pre-generated `rndc.key` is committed under `docker/bind/`.
+> For production, regenerate it before deployment:
+> ```bash
+> rndc-confgen -a -c docker/bind/rndc.key && chmod 644 docker/bind/rndc.key
+> ```
+
+### Option 3 — web-UI container controlling a host / remote BIND
+
+Run only the web-UI image and have it manage BIND that already runs elsewhere
+(the bare-metal host, or another machine). Use `docker-compose.yml` — it mounts
+the host's `/etc/bind` into the container and manages the host's `named` over
+the rndc TCP channel:
+
+```bash
+cp .env.example .env    # set RNDC_HOST to your host/remote named's IP
+docker compose up -d --build
+```
+
+> **Requirement:** a container cannot reach the host's local rndc UNIX control
+> socket, so the target `named` must listen on TCP 953. If your `named.conf`
+> does not already expose it, add:
+> ```
+> controls { inet 0.0.0.0 port 953 allow { any; } keys { "rndc-key"; }; };
+> ```
+> (and make sure the mounted key matches — copy the target's `rndc.key` to a
+> directory mounted at `/etc/bind/rndc.key` in the container).
+
+All web-UI container settings are configured via the `.env` file (see
+`.env.example`): `RNDC_HOST`, `RNDC_PORT`, `WEBUI_PORT`, `LOG_FILE`.
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `BIND_CONF_DIR` | `/etc/bind` | Directory holding `named.conf*.local/.default-zones/options` |
+| `ZONE_DIR` | `$BIND_CONF_DIR` | Where zone data files (`db.<zone>`) are written |
+| `ZONE_OWNER` | *(empty)* | `user:group` to chown new zone files to (e.g. `bind:bind` in Docker) |
+| `RNDC_HOST` | *(empty → local socket)* | Hostname/IP of a remote `named` over TCP (e.g. `bind9`) |
+| `RNDC_PORT` | `953` | rndc TCP port when `RNDC_HOST` is set |
+| `RNDC_KEY` | `$BIND_CONF_DIR/rndc.key` | rndc key file path |
+| `LOG_FILE` | *(auto)* | Path to a BIND log file to tail (containers) instead of `journalctl` |
 
 ## Manual Setup
 
@@ -72,7 +135,17 @@ bind9-web-ui/
 ├── static/style.css        # Dark/Light theme CSS
 ├── static/app.js           # Vanilla JS (no build step)
 ├── requirements.txt        # flask
-├── install.sh              # One-shot setup script
+├── Dockerfile              # Container image for the web UI
+├── docker-compose.yml      # Web-UI only (manages host/remote BIND over TCP rndc)
+├── docker-compose-w-bind9.yml  # Full stack: BIND9 container + web UI
+├── .env.example            # Sample env for docker-compose.yml (web-UI only)
+├── docker/bind/            # Config/rndc.key shared with the BIND container
+│   ├── named.conf
+│   ├── named.conf.options
+│   ├── named.conf.local
+│   ├── named.conf.default-zones
+│   └── rndc.key
+├── install.sh              # One-shot bare-metal setup script
 └── bind9-webui.service     # Systemd unit file
 ```
 
@@ -104,12 +177,15 @@ bind9-web-ui/
 
 The web UI communicates with BIND9 through:
 
-- **`rndc`** — for server control (reload, flush, stats, querylog)
+- **`rndc`** — for server control (reload, flush, stats, querylog); over the local UNIX socket on bare-metal, or over TCP 953 toward a container/remote BIND
 - **`/etc/bind/` config files** — read/write `named.conf.local`, zone files
 - **`named-checkconf` / `named-checkzone`** — for validation
-- **`journalctl`** — for log viewing
+- **`journalctl` / a log file** — for log viewing (containers tail `LOG_FILE`)
 
-No database required. No additional services. Just reads and writes the same files your BIND9 installation uses.
+The transport is chosen automatically from the environment: running as the
+systemd service it uses the local socket; in a container it uses `RNDC_HOST`
+over TCP. No database required. Just reads and writes the same files (or talks
+to the same control channel) that BIND9 uses.
 
 ## License
 

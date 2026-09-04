@@ -1,0 +1,25 @@
+// BIND9 Web UI — default/system zones for the dockerized BIND9 server.
+zone "." {
+    type hint;
+    file "/usr/share/dns/root.hints";
+};
+
+zone "localhost" {
+    type primary;
+    file "/etc/bind/db.local";
+};
+
+zone "127.in-addr.arpa" {
+    type primary;
+    file "/etc/bind/db.127";
+};
+
+zone "0.in-addr.arpa" {
+    type primary;
+    file "/etc/bind/db.0";
+};
+
+zone "255.in-addr.arpa" {
+    type primary;
+    file "/etc/bind/db.255";
+};
