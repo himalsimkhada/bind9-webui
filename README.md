@@ -5,7 +5,8 @@ A lightweight web interface for managing BIND9 (named) DNS server. Runs on top o
 ## Features
 
 - **Dashboard** — structured server status with stat boxes, rndc controls (reload, flush, stats, querylog)
-- **Zone Management** — create/delete zones, add/remove records (A, AAAA, MX, CNAME, NS, TXT, SRV, PTR)
+- **Zone Management** — create/delete zones, add/remove records (A, AAAA, MX, CNAME, NS, TXT, SRV, PTR), edit raw zone files directly
+- **Zone Source Control** — one-click move zones between `named.conf.local` and `named.conf.default-zones`, with protected flag for built-in system zones and filesystem path display
 - **Configuration** — edit all conf files (`named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones`) with full comment preservation
 - **Logs** — built-in log viewer with line count control and text filtering
 - **Validation** — zone and config checking via `named-checkconf` / `named-checkzone`
@@ -81,9 +82,11 @@ bind9-web-ui/
 | GET | `/api/status` | BIND9 server status (raw) |
 | GET | `/api/status/structured` | Server status (parsed key-value) |
 | GET | `/api/zones` | List all zones |
-| GET | `/api/zone/<name>` | Zone detail + records |
+| GET | `/api/zone/<name>` | Zone detail + records + path + source |
 | POST | `/api/zone` | Create zone |
 | DELETE | `/api/zone/<name>` | Delete zone |
+| PUT | `/api/zone/<name>/file` | Update raw zone file |
+| POST | `/api/zone/<name>/source` | Move zone between config files |
 | POST | `/api/zone/<name>/record` | Add record |
 | DELETE | `/api/zone/<name>/record/<idx>` | Remove record |
 | GET | `/api/config/files` | List editable config files |

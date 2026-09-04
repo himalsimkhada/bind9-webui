@@ -4,6 +4,20 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.2] - 2026-09-04
+
+### Added
+
+- "Move to default-zones" / "Move back to local" buttons on zone detail — one-click relocation of a zone block between `named.conf.local` and `named.conf.default-zones` with automatic BIND reload
+- Source indicator on zone detail showing which config file a zone lives in
+- `protected` flag for built-in system zones (`localhost`, `127.in-addr.arpa`, `0.in-addr.arpa`, `255.in-addr.arpa`, `.`) that prevents accidental deletion
+- New API endpoint: `POST /api/zone/<name>/source` to move zones between config files
+
+### Changed
+
+- Zone detail action buttons now use proper spacing via `.btn-row` layout
+- Delete now works for user-created zones in default-zones (only built-in systems zones are protected)
+
 ## [0.2.1] - 2026-09-04
 
 ### Added

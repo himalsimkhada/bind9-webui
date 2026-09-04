@@ -85,15 +85,20 @@ def get_zones():
     raw_local = _strip_comments(_read_file(NAMED_CONF_LOCAL))
     raw_defaults = _strip_comments(_read_file(NAMED_CONF_DEFAULT_ZONES))
 
+    protected_defaults = {"localhost", "127.in-addr.arpa", "0.in-addr.arpa",
+                          "255.in-addr.arpa", "."}
+
     for source, text in [("local", raw_local), ("default", raw_defaults)]:
         for name, body in _find_block(text, "zone"):
             ftype = re.search(r'type\s+(\w+)', body)
             ffile = re.search(r'file\s+"([^"]+)"', body)
+            zname = name.strip('"')
             zones.append({
-                "name": name.strip('"'),
+                "name": zname,
                 "type": ftype.group(1) if ftype else "unknown",
                 "file": ffile.group(1) if ffile else "",
                 "source": source,
+                "protected": source == "default" and zname in protected_defaults,
             })
     return zones
 
@@ -248,8 +253,8 @@ def remove_zone(zone_name):
     zone = next((z for z in zones if z["name"] == zone_name), None)
     if not zone:
         raise RuntimeError(f"Zone {zone_name} not found")
-    if zone["source"] == "default":
-        raise RuntimeError("Cannot remove default zones")
+    if zone.get("protected"):
+        raise RuntimeError(f"'{zone_name}' is a protected system zone and cannot be deleted")
 
     conf = _read_file(NAMED_CONF_LOCAL)
     pattern = re.compile(
@@ -259,10 +264,55 @@ def remove_zone(zone_name):
     new_conf = pattern.sub("", conf)
     _write_file(NAMED_CONF_LOCAL, new_conf)
 
+    defaults_conf = _read_file(NAMED_CONF_DEFAULT_ZONES)
+    new_defaults_conf = pattern.sub("", defaults_conf)
+    if new_defaults_conf != defaults_conf:
+        _write_file(NAMED_CONF_DEFAULT_ZONES, new_defaults_conf)
+
     if zone["file"]:
         fpath = _resolve_zone_path(zone['file'])
-        if os.path.exists(fpath):
+        if os.path.exists(fpath) and fpath.startswith(BIND_CONF_DIR):
             _run(f"sudo rm {fpath}")
+
+    rndc("reload")
+    return True
+
+
+def move_zone_source(zone_name, target):
+    zones = get_zones()
+    zone = next((z for z in zones if z["name"] == zone_name), None)
+    if not zone:
+        raise RuntimeError(f"Zone {zone_name} not found")
+
+    if target not in ("default", "local"):
+        raise RuntimeError("Target must be 'default' or 'local'")
+
+    if zone["source"] == target:
+        raise RuntimeError(f"Zone {zone_name} is already in {target} config")
+
+    pattern = re.compile(
+        rf'zone\s+"{re.escape(zone_name)}"\s*\{{.*?\}};\s*',
+        re.DOTALL
+    )
+
+    from_conf = NAMED_CONF_LOCAL if zone["source"] == "local" else NAMED_CONF_DEFAULT_ZONES
+    to_conf = NAMED_CONF_LOCAL if target == "local" else NAMED_CONF_DEFAULT_ZONES
+
+    block_match = re.search(
+        rf'zone\s+"{re.escape(zone_name)}"\s*\{{.*?\}};\s*',
+        _read_file(from_conf), re.DOTALL
+    )
+    if not block_match:
+        raise RuntimeError(f"Could not find zone block for {zone_name}")
+
+    block = block_match.group(0)
+
+    src = _read_file(from_conf)
+    new_src = pattern.sub("", src)
+    _write_file(from_conf, new_src)
+
+    dst = _read_file(to_conf)
+    _write_file(to_conf, dst.rstrip() + "\n\n" + block)
 
     rndc("reload")
     return True

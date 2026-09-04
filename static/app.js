@@ -145,6 +145,7 @@ function viewZone(name) {
     $("zone-detail").classList.remove("hidden");
     $("zone-detail-name").textContent = name;
     $("zone-info").innerHTML = `<span class="zone-info-path">File: <code>${r.data.path}</code></span>`;
+    renderZoneSource(r.data.source);
     $("zone-raw-editor").value = r.data.raw;
     $("zone-raw-wrap").classList.add("hidden");
     $("zone-raw-status").textContent = "";
@@ -159,6 +160,30 @@ function viewZone(name) {
         <td><button class="danger" style="padding:2px 8px" onclick="deleteRecord(${i})">x</button></td>`;
       body.appendChild(tr);
     });
+  });
+}
+
+function renderZoneSource(source) {
+  const el = $("zone-source");
+  if (zoneDoc.protected) {
+    el.innerHTML = `<span class="zone-source-tag default">Protected system zone in named.conf.default-zones</span>
+      <span class="small-text">Cannot be moved or deleted</span>`;
+  } else if (source === "default") {
+    el.innerHTML = `<span class="zone-source-tag default">In named.conf.default-zones</span>
+      <button class="secondary" style="margin-left:8px" onclick="moveZoneSource('local')">Move back to local</button>
+      <span class="small-text">Zone block lives in named.conf.default-zones</span>`;
+  } else {
+    el.innerHTML = `<span class="zone-source-tag local">In named.conf.local</span>
+      <button class="secondary" style="margin-left:8px" onclick="moveZoneSource('default')">Move to default-zones</button>
+      <span class="small-text">Automatically adds the zone block to named.conf.default-zones</span>`;
+  }
+}
+
+function moveZoneSource(target) {
+  if (!currentZone) return;
+  api("POST", "/api/zone/" + currentZone + "/source", { target }).then(r => {
+    toast(r.ok ? r.message : r.error, r.ok);
+    if (r.ok) viewZone(currentZone);
   });
 }
 

@@ -240,6 +240,44 @@ textarea {
   margin-left: 8px;
 }
 
+.btn-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.btn-row pre { margin: 0; margin-top: 4px; width: 100%; }
+
+.zone-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.zone-source-tag {
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.zone-source-tag.local {
+  background: var(--surface2);
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+.zone-source-tag.default {
+  background: var(--surface2);
+  color: var(--dim);
+  border: 1px solid var(--border);
+}
+
 /* ── Dashboard stat boxes ─────────────────────────────────────────────── */
 
 .stat-grid {

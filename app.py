@@ -50,8 +50,13 @@ def api_zone_detail(name):
     try:
         text = bm.get_zone_file(name)
         path = bm.get_zone_path(name)
+        zones = bm.get_zones()
+        zone = next((z for z in zones if z["name"] == name), None)
+        source = zone["source"] if zone else "unknown"
+        protected = zone.get("protected", False) if zone else False
         records, soa = bm.parse_zone_records(text)
-        return _ok({"zone": name, "records": records, "soa": soa, "raw": text, "path": path})
+        return _ok({"zone": name, "records": records, "soa": soa, "raw": text,
+                    "path": path, "source": source, "protected": protected})
     except Exception as e:
         return _err(e)
 
@@ -63,6 +68,17 @@ def api_zone_update_file(name):
     try:
         path = bm.write_zone_file(name, content)
         return _ok(msg=f"Zone file saved to {path}")
+    except Exception as e:
+        return _err(e)
+
+
+@app.route("/api/zone/<name>/source", methods=["POST"])
+def api_zone_move_source(name):
+    data = request.json or {}
+    target = data.get("target", "default")
+    try:
+        bm.move_zone_source(name, target)
+        return _ok(msg=f"Zone {name} moved to {target} config")
     except Exception as e:
         return _err(e)
 
