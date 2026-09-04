@@ -1,4 +1,6 @@
 let currentZone = null;
+let currentConfigFile = null;
+let configFiles = [];
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -22,6 +24,24 @@ function toast(msg, ok) {
 
 function $(id) { return document.getElementById(id); }
 
+// ── Theme ────────────────────────────────────────────────────────────────
+
+function getTheme() {
+  return localStorage.getItem("bind9-theme") || "dark";
+}
+
+function setTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("bind9-theme", theme);
+  $("theme-btn").innerHTML = theme === "dark" ? "&#9790;" : "&#9728;";
+}
+
+function toggleTheme() {
+  setTheme(getTheme() === "dark" ? "light" : "dark");
+}
+
+setTheme(getTheme());
+
 // ── Navigation ──────────────────────────────────────────────────────────
 
 document.querySelectorAll(".nav-btn").forEach(btn => {
@@ -31,18 +51,40 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.classList.add("active");
     $("view-" + btn.dataset.view).classList.add("active");
 
-    if (btn.dataset.view === "dashboard") refreshStatus();
-    if (btn.dataset.view === "zones") loadZones();
-    if (btn.dataset.view === "config") loadConfig();
+    const view = btn.dataset.view;
+    if (view === "dashboard") refreshStatus();
+    if (view === "zones") loadZones();
+    if (view === "config") initConfig();
+    if (view === "logs") loadLogs();
   });
 });
 
 // ── Dashboard ───────────────────────────────────────────────────────────
 
 function refreshStatus() {
+  api("GET", "/api/status/structured").then(r => {
+    if (!r.ok) {
+      $("stat-running").textContent = "Error";
+      $("stat-running").className = "value red";
+      return;
+    }
+    const d = r.data;
+    $("stat-running").textContent = d.running ? "Running" : "Stopped";
+    $("stat-running").className = "value " + (d.running ? "green" : "red");
+    $("stat-version").textContent = d.version || "--";
+    $("stat-zones").textContent = d.zones || "--";
+    $("stat-workers").textContent = d.workers || "--";
+    $("stat-boot").textContent = d.boot_time || "--";
+    $("stat-querylog").textContent = d.query_logging || "--";
+  });
+
   api("GET", "/api/status").then(r => {
     $("status-output").textContent = r.ok ? r.data : "Error: " + r.error;
   });
+}
+
+function toggleRawStatus() {
+  $("status-output").classList.toggle("hidden");
 }
 
 function rndcAction(action) {
@@ -174,19 +216,92 @@ function checkZone() {
   });
 }
 
-// ── Config ──────────────────────────────────────────────────────────────
+// ── Configuration ───────────────────────────────────────────────────────
 
-function loadConfig() {
-  api("GET", "/api/config/options").then(r => {
-    if (r.ok) $("config-editor").value = r.data;
+function initConfig() {
+  api("GET", "/api/config/files").then(r => {
+    if (!r.ok) return;
+    configFiles = r.data;
+    const tabs = $("config-tabs");
+    tabs.innerHTML = "";
+    configFiles.forEach((f, i) => {
+      const btn = document.createElement("button");
+      btn.className = "tab-btn" + (i === 0 ? " active" : "");
+      btn.textContent = f;
+      btn.onclick = () => switchConfigTab(f, btn);
+      tabs.appendChild(btn);
+    });
+    if (configFiles.length > 0) {
+      currentConfigFile = configFiles[0];
+      loadCurrentConfig();
+    }
   });
 }
 
-function saveConfig() {
+function switchConfigTab(name, btn) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentConfigFile = name;
+  loadCurrentConfig();
+}
+
+function loadCurrentConfig() {
+  if (!currentConfigFile) return;
+  $("config-save-output").textContent = "";
+  api("GET", "/api/config/file/" + encodeURIComponent(currentConfigFile)).then(r => {
+    if (r.ok) {
+      const editors = $("config-editors");
+      editors.innerHTML = "";
+      const ta = document.createElement("textarea");
+      ta.id = "config-editor";
+      ta.rows = 24;
+      ta.spellcheck = false;
+      ta.value = r.data;
+      editors.appendChild(ta);
+    }
+  });
+}
+
+function saveCurrentConfig() {
+  if (!currentConfigFile) return;
   const content = $("config-editor").value;
-  api("PUT", "/api/config/options", { content }).then(r => {
-    toast(r.ok ? "Options saved" : r.error, r.ok);
+  api("PUT", "/api/config/file/" + encodeURIComponent(currentConfigFile), { content }).then(r => {
+    toast(r.ok ? currentConfigFile + " saved" : r.error, r.ok);
     $("config-save-output").textContent = r.ok ? "Saved. Reload config to apply." : r.error;
+  });
+}
+
+function checkConfigFromConf() {
+  api("GET", "/api/config/check").then(r => {
+    const output = $("config-save-output");
+    output.textContent = r.ok ? (r.data.valid ? "Config is valid" : "Error: " + r.data.error) : r.error;
+    output.style.color = r.ok && r.data.valid ? "var(--green)" : "var(--red)";
+  });
+}
+
+// ── Logs ────────────────────────────────────────────────────────────────
+
+function loadLogs() {
+  const lines = $("log-lines").value;
+  const query = $("log-filter").value;
+  const el = $("log-output");
+  el.textContent = "Loading...";
+  api("GET", "/api/logs?lines=" + lines + "&query=" + encodeURIComponent(query)).then(r => {
+    if (!r.ok) {
+      el.textContent = "Error: " + r.error;
+      return;
+    }
+    const text = r.data;
+    el.innerHTML = "";
+    const lines = text.split("\n");
+    lines.forEach(line => {
+      const span = document.createElement("span");
+      span.className = "log-info";
+      if (/error|fail|denied|fatal/i.test(line)) span.className = "log-error";
+      else if (/warn|warning/i.test(line)) span.className = "log-warn";
+      span.textContent = line + "\n";
+      el.appendChild(span);
+    });
   });
 }
 

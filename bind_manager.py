@@ -1,7 +1,6 @@
 import os
 import re
 import subprocess
-import time
 from pathlib import Path
 
 BIND_CONF_DIR = "/etc/bind"
@@ -50,6 +49,16 @@ def _write_file(path, content):
     os.unlink(tmp)
 
 
+# ── Config File Read/Write ──────────────────────────────────────────────────
+
+def read_conf_file(path):
+    return _read_file(path)
+
+
+def write_conf_file(path, content):
+    _write_file(path, content)
+
+
 # ── Config Parsing ──────────────────────────────────────────────────────────
 
 def _strip_comments(text):
@@ -69,15 +78,6 @@ def _find_block(text, keyword):
         body = m.group(2).strip()
         results.append((name, body))
     return results
-
-
-def get_options():
-    raw = _strip_comments(_read_file(NAMED_CONF_OPTIONS))
-    return raw
-
-
-def set_options(content):
-    _write_file(NAMED_CONF_OPTIONS, content)
 
 
 def get_zones():
@@ -100,8 +100,6 @@ def get_zones():
 
 def _resolve_zone_path(zone_file):
     if os.path.isabs(zone_file):
-        if os.path.exists(zone_file):
-            return zone_file
         return zone_file
     path = f"{BIND_CONF_DIR}/{zone_file}"
     if os.path.exists(path):
@@ -330,9 +328,56 @@ def get_status():
     return out
 
 
+def get_status_structured():
+    raw = get_status()
+    info = {}
+    mapping = {
+        "version": "version",
+        "running on": "host",
+        "boot time": "boot_time",
+        "last configured": "last_configured",
+        "configuration file": "config_file",
+        "CPUs found": "cpus",
+        "worker threads": "workers",
+        "number of zones": "zones",
+        "debug level": "debug_level",
+        "xfers running": "xfers_running",
+        "xfers deferred": "xfers_deferred",
+        "soa queries in progress": "soa_queries",
+        "query logging is": "query_logging",
+        "recursive clients": "recursive_clients",
+        "tcp clients": "tcp_clients",
+        "TCP high-water": "tcp_highwater",
+        "server is up and running": "running",
+    }
+    for line in raw.splitlines():
+        line = line.strip()
+        for key, field in mapping.items():
+            if line.lower().startswith(key):
+                value = line[len(key):].strip(": ")
+                if field == "running":
+                    value = True
+                info[field] = value
+    return info
+
+
 def query_log(status=True):
     cmd = "querylog on" if status else "querylog off"
     return rndc(cmd)
+
+
+# ── Logs ────────────────────────────────────────────────────────────────────
+
+def get_logs(lines=100, query=""):
+    cmd = f"sudo journalctl -u named --no-pager -n {lines}"
+    if query:
+        cmd += f" | grep -i '{query}'"
+    out, _, _ = _run(cmd)
+    if not out:
+        out, _, _ = _run(f"sudo tail -n {lines} /var/log/syslog 2>/dev/null | grep -i named")
+    if not out:
+        out = "No logs found. Ensure named is running as a systemd service."
+    return out
 
 
 # ── Validation ──────────────────────────────────────────────────────────────

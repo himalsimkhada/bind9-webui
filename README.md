@@ -4,10 +4,12 @@ A lightweight web interface for managing BIND9 (named) DNS server. Runs on top o
 
 ## Features
 
-- **Dashboard** — server status, rndc controls (reload, flush, stats, querylog)
+- **Dashboard** — structured server status with stat boxes, rndc controls (reload, flush, stats, querylog)
 - **Zone Management** — create/delete zones, add/remove records (A, AAAA, MX, CNAME, NS, TXT, SRV, PTR)
-- **Config Editor** — edit `named.conf.options` directly in the browser
+- **Configuration** — edit all conf files (`named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones`) with full comment preservation
+- **Logs** — built-in log viewer with line count control and text filtering
 - **Validation** — zone and config checking via `named-checkconf` / `named-checkzone`
+- **Dark/Light Mode** — toggle theme, persisted in browser
 - **Minimal footprint** — Flask + vanilla HTML/CSS/JS, ~32 MB RAM
 
 ## Requirements
@@ -19,7 +21,7 @@ A lightweight web interface for managing BIND9 (named) DNS server. Runs on top o
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/bind9-webui.git
+git clone https://github.com/himalsimkhada/bind9-webui.git
 cd bind9-webui
 sudo bash install.sh
 ```
@@ -65,7 +67,7 @@ bind9-web-ui/
 ├── app.py                  # Flask app — API routes + serves UI
 ├── bind_manager.py         # rndc commands + zone/config file parsing
 ├── templates/index.html    # Single-page dashboard
-├── static/style.css        # Dark minimal CSS
+├── static/style.css        # Dark/Light theme CSS
 ├── static/app.js           # Vanilla JS (no build step)
 ├── requirements.txt        # flask
 ├── install.sh              # One-shot setup script
@@ -76,17 +78,20 @@ bind9-web-ui/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/status` | BIND9 server status |
+| GET | `/api/status` | BIND9 server status (raw) |
+| GET | `/api/status/structured` | Server status (parsed key-value) |
 | GET | `/api/zones` | List all zones |
 | GET | `/api/zone/<name>` | Zone detail + records |
 | POST | `/api/zone` | Create zone |
 | DELETE | `/api/zone/<name>` | Delete zone |
 | POST | `/api/zone/<name>/record` | Add record |
 | DELETE | `/api/zone/<name>/record/<idx>` | Remove record |
-| GET | `/api/config/options` | Get named.conf.options |
-| PUT | `/api/config/options` | Update named.conf.options |
+| GET | `/api/config/files` | List editable config files |
+| GET | `/api/config/file/<name>` | Read config file |
+| PUT | `/api/config/file/<name>` | Update config file |
 | GET | `/api/config/check` | Run named-checkconf |
 | GET | `/api/zone/<name>/check` | Run named-checkzone |
+| GET | `/api/logs` | Query named logs |
 | POST | `/api/control/reload` | rndc reload |
 | POST | `/api/control/flush` | rndc flush |
 
@@ -97,6 +102,7 @@ The web UI communicates with BIND9 through:
 - **`rndc`** — for server control (reload, flush, stats, querylog)
 - **`/etc/bind/` config files** — read/write `named.conf.local`, zone files
 - **`named-checkconf` / `named-checkzone`** — for validation
+- **`journalctl`** — for log viewing
 
 No database required. No additional services. Just reads and writes the same files your BIND9 installation uses.
 

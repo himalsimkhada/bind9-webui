@@ -1,8 +1,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-:root {
+:root, [data-theme="dark"] {
   --bg: #0f1117;
   --surface: #161822;
+  --surface2: #1c1f2e;
   --border: #1e2130;
   --text: #c8cad0;
   --dim: #5c5f77;
@@ -11,6 +12,20 @@
   --red: #f38ba8;
   --yellow: #f9e2af;
   --hover: #1a1d2e;
+}
+
+[data-theme="light"] {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface2: #ebebef;
+  --border: #d5d5da;
+  --text: #2c2c2e;
+  --dim: #8e8e93;
+  --accent: #0066cc;
+  --green: #2d9a2d;
+  --red: #cc3333;
+  --yellow: #b8860b;
+  --hover: #eaeaef;
 }
 
 body {
@@ -32,6 +47,12 @@ header {
 header h1 { font-size: 16px; font-weight: 600; }
 .dim { color: var(--dim); font-weight: 400; }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 nav { display: flex; gap: 4px; }
 
 .nav-btn {
@@ -48,6 +69,19 @@ nav { display: flex; gap: 4px; }
 
 .nav-btn:hover { color: var(--text); background: var(--hover); }
 .nav-btn.active { color: var(--accent); border-color: var(--accent); }
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.theme-toggle:hover { color: var(--text); border-color: var(--dim); }
 
 main { padding: 24px; max-width: 1100px; }
 
@@ -177,7 +211,96 @@ textarea {
 
 .raw-zone { margin-top: 10px; }
 
+/* ── Dashboard stat boxes ─────────────────────────────────────────────── */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stat-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.stat-box .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+
+.stat-box .value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.stat-box .value.green { color: var(--green); }
+.stat-box .value.red { color: var(--red); }
+.stat-box .value.yellow { color: var(--yellow); }
+
+/* ── Config tabs ──────────────────────────────────────────────────────── */
+
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--dim);
+  padding: 8px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Log viewer ───────────────────────────────────────────────────────── */
+
+.log-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.log-output {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 11px;
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-output .log-error { color: var(--red); }
+.log-output .log-warn { color: var(--yellow); }
+.log-output .log-info { color: var(--text); }
+
 @media (max-width: 768px) {
   .card-row { grid-template-columns: 1fr; }
   header { flex-direction: column; gap: 10px; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
 }

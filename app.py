@@ -32,6 +32,14 @@ def api_status():
         return _err(e)
 
 
+@app.route("/api/status/structured")
+def api_status_structured():
+    try:
+        return _ok(bm.get_status_structured())
+    except Exception as e:
+        return _err(e)
+
+
 @app.route("/api/zones")
 def api_zones():
     return _ok(bm.get_zones())
@@ -108,20 +116,39 @@ def api_record_delete(name, idx):
         return _err(e)
 
 
-# ── Config ──────────────────────────────────────────────────────────────────
+# ── Configuration ───────────────────────────────────────────────────────────
 
-@app.route("/api/config/options")
-def api_config_options():
-    return _ok(bm.get_options())
+CONF_FILES = {
+    "named.conf": bm.NAMED_CONF,
+    "named.conf.options": bm.NAMED_CONF_OPTIONS,
+    "named.conf.local": bm.NAMED_CONF_LOCAL,
+    "named.conf.default-zones": bm.NAMED_CONF_DEFAULT_ZONES,
+}
 
 
-@app.route("/api/config/options", methods=["PUT"])
-def api_config_options_set():
+@app.route("/api/config/files")
+def api_config_files():
+    return _ok(list(CONF_FILES.keys()))
+
+
+@app.route("/api/config/file/<path:name>")
+def api_config_get(name):
+    path = CONF_FILES.get(name)
+    if path is None:
+        return _err("Unknown config file")
+    return _ok(bm.read_conf_file(path))
+
+
+@app.route("/api/config/file/<path:name>", methods=["PUT"])
+def api_config_set(name):
+    path = CONF_FILES.get(name)
+    if path is None:
+        return _err("Unknown config file")
     data = request.json or {}
     content = data.get("content", "")
     try:
-        bm.set_options(content)
-        return _ok(msg="Options updated")
+        bm.write_conf_file(path, content)
+        return _ok(msg=f"{name} saved")
     except Exception as e:
         return _err(e)
 
@@ -137,6 +164,15 @@ def api_zone_check(name):
         return _ok(bm.check_zone(name))
     except Exception as e:
         return _err(e)
+
+
+# ── Logs ────────────────────────────────────────────────────────────────────
+
+@app.route("/api/logs")
+def api_logs():
+    lines = request.args.get("lines", 100, type=int)
+    query = request.args.get("query", "")
+    return _ok(bm.get_logs(lines=lines, query=query))
 
 
 # ── rndc Controls ───────────────────────────────────────────────────────────

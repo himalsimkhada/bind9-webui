@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,39 +9,53 @@
 <body>
 <header>
   <h1>BIND9 <span class="dim">Web UI</span></h1>
-  <nav>
-    <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-    <button class="nav-btn" data-view="zones">Zones</button>
-    <button class="nav-btn" data-view="config">Config</button>
-  </nav>
+  <div class="header-right">
+    <nav>
+      <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+      <button class="nav-btn" data-view="zones">Zones</button>
+      <button class="nav-btn" data-view="config">Configuration</button>
+      <button class="nav-btn" data-view="logs">Logs</button>
+    </nav>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">&#9790;</button>
+  </div>
 </header>
 
 <main>
   <!-- Dashboard -->
   <section id="view-dashboard" class="view active">
-    <div class="card-row">
-      <div class="card">
-        <h3>Server Status</h3>
-        <pre id="status-output">Loading...</pre>
-        <div class="card-actions">
-          <button onclick="refreshStatus()">Refresh</button>
-        </div>
+    <div class="card">
+      <h3>Server Status</h3>
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-box"><div class="label">Status</div><div class="value green" id="stat-running">--</div></div>
+        <div class="stat-box"><div class="label">Version</div><div class="value" id="stat-version">--</div></div>
+        <div class="stat-box"><div class="label">Zones</div><div class="value" id="stat-zones">--</div></div>
+        <div class="stat-box"><div class="label">Workers</div><div class="value" id="stat-workers">--</div></div>
+        <div class="stat-box"><div class="label">Boot Time</div><div class="value" id="stat-boot">--</div></div>
+        <div class="stat-box"><div class="label">Query Log</div><div class="value" id="stat-querylog">--</div></div>
       </div>
+      <pre id="status-output" class="hidden"></pre>
+      <div class="card-actions">
+        <button onclick="refreshStatus()">Refresh</button>
+        <button class="secondary" onclick="toggleRawStatus()">Raw Output</button>
+      </div>
+    </div>
+
+    <div class="card-row">
       <div class="card">
         <h3>Controls</h3>
         <div class="btn-group">
           <button onclick="rndcAction('reload')">Reload Config</button>
           <button onclick="rndcAction('flush')">Flush Cache</button>
           <button onclick="rndcAction('stats')">Stats</button>
-          <button onclick="rndcAction('querylog')">Query Log</button>
+          <button onclick="rndcAction('querylog')">Toggle Query Log</button>
         </div>
         <pre id="control-output" class="small-output"></pre>
       </div>
-    </div>
-    <div class="card">
-      <h3>Config Check</h3>
-      <button onclick="checkConfig()">Run named-checkconf</button>
-      <pre id="config-check-output"></pre>
+      <div class="card">
+        <h3>Config Check</h3>
+        <button onclick="checkConfig()" style="margin-bottom:8px">Run named-checkconf</button>
+        <pre id="config-check-output"></pre>
+      </div>
     </div>
   </section>
 
@@ -91,16 +105,36 @@
     </div>
   </section>
 
-  <!-- Config -->
+  <!-- Configuration -->
   <section id="view-config" class="view">
     <div class="card">
-      <h3>named.conf.options</h3>
-      <textarea id="config-editor" rows="20" spellcheck="false"></textarea>
+      <div class="tab-bar" id="config-tabs"></div>
+      <div id="config-editors"></div>
       <div class="card-actions">
-        <button onclick="saveConfig()">Save Options</button>
-        <button class="secondary" onclick="loadConfig()">Reload</button>
+        <button onclick="saveCurrentConfig()">Save</button>
+        <button class="secondary" onclick="loadCurrentConfig()">Reload</button>
+        <button class="secondary" onclick="checkConfigFromConf()">Check Config</button>
         <pre id="config-save-output" class="small-output"></pre>
       </div>
+    </div>
+  </section>
+
+  <!-- Logs -->
+  <section id="view-logs" class="view">
+    <div class="card">
+      <h3>BIND9 Logs</h3>
+      <div class="log-controls">
+        <select id="log-lines">
+          <option value="50">50 lines</option>
+          <option value="100" selected>100 lines</option>
+          <option value="200">200 lines</option>
+          <option value="500">500 lines</option>
+        </select>
+        <input id="log-filter" placeholder="filter..." style="width:200px" />
+        <button onclick="loadLogs()">Load</button>
+        <button class="secondary" onclick="loadLogs()">Refresh</button>
+      </div>
+      <div class="log-output" id="log-output">Loading logs...</div>
     </div>
   </section>
 </main>
