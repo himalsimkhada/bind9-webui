@@ -211,6 +211,35 @@ textarea {
 
 .raw-zone { margin-top: 10px; }
 
+.zone-info {
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.zone-info-path {
+  color: var(--dim);
+}
+
+.zone-info-path code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: var(--accent);
+}
+
+#zone-raw-wrap h4 {
+  font-size: 12px;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+
+.small-text {
+  font-size: 11px;
+  color: var(--dim);
+  margin-left: 8px;
+}
+
 /* ── Dashboard stat boxes ─────────────────────────────────────────────── */
 
 .stat-grid {

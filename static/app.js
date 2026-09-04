@@ -1,6 +1,7 @@
 let currentZone = null;
 let currentConfigFile = null;
 let configFiles = [];
+let zoneDoc = null;
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -140,10 +141,13 @@ function viewZone(name) {
   currentZone = name;
   api("GET", "/api/zone/" + name).then(r => {
     if (!r.ok) return toast(r.error, false);
+    zoneDoc = r.data;
     $("zone-detail").classList.remove("hidden");
     $("zone-detail-name").textContent = name;
-    $("zone-raw").textContent = r.data.raw;
-    $("zone-raw").classList.add("hidden");
+    $("zone-info").innerHTML = `<span class="zone-info-path">File: <code>${r.data.path}</code></span>`;
+    $("zone-raw-editor").value = r.data.raw;
+    $("zone-raw-wrap").classList.add("hidden");
+    $("zone-raw-status").textContent = "";
     $("zone-check-output").textContent = "";
 
     const body = $("records-body");
@@ -199,7 +203,39 @@ function deleteZone() {
 }
 
 function toggleRaw() {
-  $("zone-raw").classList.toggle("hidden");
+  const wrap = $("zone-raw-wrap");
+  const hidden = wrap.classList.contains("hidden");
+  wrap.classList.toggle("hidden");
+  if (hidden) {
+    $("zone-raw-editor").value = (zoneDoc && zoneDoc.raw) || "";
+    $("zone-raw-status").textContent = "";
+  }
+}
+
+function saveRawZone() {
+  if (!currentZone) return;
+  const content = $("zone-raw-editor").value;
+  api("PUT", "/api/zone/" + currentZone + "/file", { content }).then(r => {
+    if (r.ok) {
+      toast("Zone file saved", true);
+      $("zone-raw-status").textContent = "Saved. Reloaded BIND.";
+      viewZone(currentZone);
+    } else {
+      toast(r.error, false);
+      $("zone-raw-status").textContent = "Error: " + r.error;
+    }
+  });
+}
+
+function reloadRawZone() {
+  if (!currentZone) return;
+  api("GET", "/api/zone/" + currentZone).then(r => {
+    if (r.ok) {
+      zoneDoc = r.data;
+      $("zone-raw-editor").value = r.data.raw;
+      $("zone-raw-status").textContent = "Reverted to saved version.";
+    }
+  });
 }
 
 function checkZone() {

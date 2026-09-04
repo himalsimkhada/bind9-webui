@@ -118,6 +118,22 @@ def get_zone_file(zone_name):
     return _read_file(_resolve_zone_path(zone['file']))
 
 
+def get_zone_path(zone_name):
+    zones = get_zones()
+    zone = next((z for z in zones if z["name"] == zone_name), None)
+    if not zone:
+        raise RuntimeError(f"Zone {zone_name} not found")
+    return _resolve_zone_path(zone['file'])
+
+
+def write_zone_file(zone_name, content):
+    content = content + "\n" if not content.endswith("\n") else content
+    path = get_zone_path(zone_name)
+    _write_file(path, content)
+    rndc("reload")
+    return path
+
+
 def parse_zone_records(zone_text):
     records = []
     ttl_match = re.search(r'\$TTL\s+(\d+)', zone_text)

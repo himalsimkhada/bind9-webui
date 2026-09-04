@@ -49,8 +49,20 @@ def api_zones():
 def api_zone_detail(name):
     try:
         text = bm.get_zone_file(name)
+        path = bm.get_zone_path(name)
         records, soa = bm.parse_zone_records(text)
-        return _ok({"zone": name, "records": records, "soa": soa, "raw": text})
+        return _ok({"zone": name, "records": records, "soa": soa, "raw": text, "path": path})
+    except Exception as e:
+        return _err(e)
+
+
+@app.route("/api/zone/<name>/file", methods=["PUT"])
+def api_zone_update_file(name):
+    data = request.json or {}
+    content = data.get("content", "")
+    try:
+        path = bm.write_zone_file(name, content)
+        return _ok(msg=f"Zone file saved to {path}")
     except Exception as e:
         return _err(e)
 

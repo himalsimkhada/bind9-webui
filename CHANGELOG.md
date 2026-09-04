@@ -4,6 +4,18 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.1] - 2026-09-04
+
+### Added
+
+- Editable raw zone file in zone detail view (edit the full DNS zone file directly, then save + auto-reload BIND)
+- Filesystem path display for each zone (e.g. `/etc/bind/db.example.com`)
+- New API endpoint: `PUT /api/zone/<name>/file` to update raw zone file content
+
+### Fixed
+
+- Zone detail "Show Raw" now shows an editable textarea with Save and Revert actions
+
 ## [0.2.0] - 2026-09-04
 
 ### Added

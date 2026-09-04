@@ -80,6 +80,7 @@
 
     <div id="zone-detail" class="card hidden">
       <h3 id="zone-detail-name">Zone Records</h3>
+      <div class="zone-info" id="zone-info"></div>
       <div class="inline-form">
         <input id="rec-name" placeholder="name" />
         <select id="rec-type">
@@ -95,9 +96,17 @@
         <thead><tr><th>Name</th><th>TTL</th><th>Type</th><th>Value</th><th></th></tr></thead>
         <tbody id="records-body"></tbody>
       </table>
-      <pre id="zone-raw" class="raw-zone hidden"></pre>
+      <div id="zone-raw-wrap" class="hidden">
+        <h4>Raw Zone File</h4>
+        <textarea id="zone-raw-editor" rows="14" spellcheck="false"></textarea>
+        <div class="card-actions" style="margin-top:8px">
+          <button onclick="saveRawZone()">Save Raw File</button>
+          <button class="secondary" onclick="reloadRawZone()">Revert</button>
+          <span id="zone-raw-status" class="small-text"></span>
+        </div>
+      </div>
       <div class="card-actions">
-        <button class="secondary" onclick="toggleRaw()">Show Raw</button>
+        <button class="secondary" onclick="toggleRaw()">Edit Raw File</button>
         <button class="secondary" onclick="checkZone()">Check Zone</button>
         <button class="danger" onclick="deleteZone()">Delete Zone</button>
         <pre id="zone-check-output" class="small-output"></pre>
