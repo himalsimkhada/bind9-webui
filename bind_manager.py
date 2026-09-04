@@ -230,6 +230,7 @@ def add_zone(zone_name, zone_type="master", records=None):
     if records is None:
         records = [
             {"name": "@", "type": "NS", "value": f"ns1.{zone_name}.", "ttl": 3600},
+            {"name": "ns1", "type": "A", "value": "127.0.0.1", "ttl": 3600},
         ]
 
     default_soa = {
@@ -366,6 +367,84 @@ def remove_record(zone_name, record_index):
 
     records.pop(record_index)
     return update_zone_records(zone_name, records)
+
+
+# ── Bulk Host Mapping ────────────────────────────────────────────────────────
+
+def _find_zone_for_host(host, zone_names):
+    host = host.rstrip(".").lower()
+    labels = host.split(".")
+    for i in range(len(labels)):
+        zone = ".".join(labels[i:])
+        if zone in zone_names:
+            name = ".".join(labels[:i]) if i > 0 else "@"
+            return zone, name
+    return None, None
+
+
+def map_hosts(text):
+    zones = get_zones()
+    zone_names = set(z["name"] for z in zones)
+    results = []
+
+    created_hosts = set()
+    missing_zones = {}
+    duplicate_skips = 0
+    bad_lines = 0
+    created_count = 0
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or line.startswith("//"):
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            bad_lines += 1
+            results.append({"type": "SKIP", "line": line, "message": "no IP + host"})
+            continue
+        ip = parts[0]
+        hosts = parts[1:]
+
+        if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) and not re.match(r'^[0-9a-fA-F:]+$', ip):
+            bad_lines += 1
+            results.append({"type": "SKIP", "line": line, "message": f"unrecognized IP: {ip}"})
+            continue
+
+        for host in hosts:
+            zone, name = _find_zone_for_host(host, zone_names)
+            if not zone:
+                missing_zones.setdefault(host, []).append(host)
+                results.append({"type": "NO_ZONE", "host": host, "ip": ip,
+                                "message": f"no matching zone found for '{host}'"})
+                continue
+
+            key = (ip, host)
+            if key in created_hosts:
+                duplicate_skips += 1
+                results.append({"type": "DUP", "zone": zone, "host": host, "ip": ip,
+                                "message": "already added"})
+                continue
+            created_hosts.add(key)
+
+            try:
+                add_record(zone, name, "A", ip)
+                created_count += 1
+                results.append({"type": "ADD", "zone": zone, "host": host, "name": name, "ip": ip,
+                                "message": f"A record {host} -> {ip} (zone {zone}, name {name})"})
+            except Exception as e:
+                results.append({"type": "ERROR", "zone": zone, "host": host, "ip": ip,
+                                "message": str(e)})
+
+    return {
+        "results": results,
+        "summary": {
+            "created": created_count,
+            "duplicates_skipped": duplicate_skips,
+            "missing_zones": len(missing_zones),
+            "bad_lines": bad_lines,
+            "missing_zone_names": sorted(missing_zones.keys()),
+        },
+    }
 
 
 # ── rndc Controls ───────────────────────────────────────────────────────────

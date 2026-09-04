@@ -7,6 +7,7 @@ A lightweight web interface for managing BIND9 (named) DNS server. Runs on top o
 - **Dashboard** — structured server status with stat boxes, rndc controls (reload, flush, stats, querylog)
 - **Zone Management** — create/delete zones, add/remove records (A, AAAA, MX, CNAME, NS, TXT, SRV, PTR), edit raw zone files directly
 - **Zone Source Control** — one-click move zones between `named.conf.local` and `named.conf.default-zones`, with protected flag for built-in system zones and filesystem path display
+- **Host Mapper** — paste or upload `IP host1 host2 ...` lines to bulk-create A records in existing zones (with duplicate and missing-zone reporting)
 - **Configuration** — edit all conf files (`named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones`) with full comment preservation
 - **Logs** — built-in log viewer with line count control and text filtering
 - **Validation** — zone and config checking via `named-checkconf` / `named-checkzone`
@@ -87,6 +88,7 @@ bind9-web-ui/
 | DELETE | `/api/zone/<name>` | Delete zone |
 | PUT | `/api/zone/<name>/file` | Update raw zone file |
 | POST | `/api/zone/<name>/source` | Move zone between config files |
+| POST | `/api/map-hosts` | Bulk-create A records from `IP host...` lines |
 | POST | `/api/zone/<name>/record` | Add record |
 | DELETE | `/api/zone/<name>/record/<idx>` | Remove record |
 | GET | `/api/config/files` | List editable config files |

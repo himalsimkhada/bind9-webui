@@ -61,21 +61,36 @@
 
   <!-- Zones -->
   <section id="view-zones" class="view">
-    <div class="card">
-      <h3>Zones <button class="right" onclick="showAddZone()">+ Add Zone</button></h3>
-      <div id="add-zone-form" class="inline-form hidden">
-        <input id="new-zone-name" placeholder="example.com" />
-        <select id="new-zone-type">
-          <option value="master">Master</option>
-          <option value="slave">Slave</option>
-        </select>
-        <button onclick="createZone()">Create</button>
-        <button class="secondary" onclick="hideAddZone()">Cancel</button>
+    <div class="zones-layout">
+      <div class="card">
+        <h3>Zones <button class="right" onclick="showAddZone()">+ Add Zone</button></h3>
+        <div id="add-zone-form" class="inline-form hidden">
+          <input id="new-zone-name" placeholder="example.com" />
+          <select id="new-zone-type">
+            <option value="master">Master</option>
+            <option value="slave">Slave</option>
+          </select>
+          <button onclick="createZone()">Create</button>
+          <button class="secondary" onclick="hideAddZone()">Cancel</button>
+        </div>
+        <table id="zones-table">
+          <thead><tr><th>Zone</th><th>Type</th><th>Source</th><th></th></tr></thead>
+          <tbody id="zones-body"></tbody>
+        </table>
       </div>
-      <table id="zones-table">
-        <thead><tr><th>Zone</th><th>Type</th><th>Source</th><th></th></tr></thead>
-        <tbody id="zones-body"></tbody>
-      </table>
+
+      <div class="card">
+        <h3>Host Mapper</h3>
+        <p class="mapper-hint">Paste lines of <code>IP host1 host2 ...</code> or upload a file. Creates A records in the matching existing zone for each host.</p>
+        <textarea id="mapper-input" rows="10" spellcheck="false" placeholder="10.5.8.100 example.com www.example.com&#10;10.5.8.102 himal.com"></textarea>
+        <div class="btn-row">
+          <button onclick="runMapper()">Map Hosts</button>
+          <button class="secondary" onclick="clearMapper()">Clear</button>
+          <label class="file-btn secondary" for="mapper-file">Upload File</label>
+          <input type="file" id="mapper-file" accept=".txt,.hosts,.csv" style="display:none" />
+        </div>
+        <pre id="mapper-output" class="mapper-output hidden"></pre>
+      </div>
     </div>
 
     <div id="zone-detail" class="card hidden">

@@ -4,6 +4,20 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-09-04
+
+### Added
+
+- **Host Mapper** on the Zones tab — paste or upload lines of `IP host1 host2 ...` (or a `.txt`/`.hosts` file) and it bulk-creates A records in the matching existing zone for each host
+  - Automatically resolves each host's zone (apex, subdomain, nested)
+  - Skips duplicates, reports missing zones, and flags malformed lines
+  - Host Mapper sits in a side-by-side panel next to the Zones table (stacks to one column on narrow screens)
+- New API endpoint: `POST /api/map-hosts`
+
+### Fixed
+
+- **Zones could never actually load in BIND** — `add_zone` created an NS record (`ns1.<zone>`) without a matching A glue record, so `named-checkzone` failed with "NS has no address records" and the zone was "not loaded". New zones now include an `ns1` A record.
+
 ## [0.2.2] - 2026-09-04
 
 ### Added

@@ -278,6 +278,58 @@ textarea {
   border: 1px solid var(--border);
 }
 
+.mapper-hint {
+  font-size: 11px;
+  color: var(--dim);
+  margin-bottom: 10px;
+}
+
+.zones-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .zones-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.zones-layout .card {
+  margin-bottom: 0;
+}
+
+.mapper-hint code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  color: var(--accent);
+}
+
+.mapper-output {
+  margin-top: 10px;
+  max-height: 300px;
+}
+
+.file-btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+.file-btn:hover { opacity: 0.85; background: var(--hover); }
+
 /* ── Dashboard stat boxes ─────────────────────────────────────────────── */
 
 .stat-grid {

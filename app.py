@@ -83,6 +83,18 @@ def api_zone_move_source(name):
         return _err(e)
 
 
+@app.route("/api/map-hosts", methods=["POST"])
+def api_map_hosts():
+    data = request.json or {}
+    text = data.get("text", "")
+    if not text:
+        return _err("No host lines provided")
+    try:
+        return _ok(bm.map_hosts(text))
+    except Exception as e:
+        return _err(e)
+
+
 # ── Zone CRUD ───────────────────────────────────────────────────────────────
 
 @app.route("/api/zone", methods=["POST"])

@@ -277,6 +277,53 @@ function checkZone() {
   });
 }
 
+// ── Host Mapper ─────────────────────────────────────────────────────────
+
+function clearMapper() {
+  $("mapper-input").value = "";
+  $("mapper-output").classList.add("hidden");
+  $("mapper-output").textContent = "";
+}
+
+function runMapper() {
+  const text = $("mapper-input").value;
+  if (!text.trim()) return toast("Enter host lines first", false);
+  const out = $("mapper-output");
+  out.classList.remove("hidden");
+  out.textContent = "Mapping...";
+  api("POST", "/api/map-hosts", { text }).then(r => {
+    if (!r.ok) {
+      out.textContent = "Error: " + r.error;
+      return;
+    }
+    const s = r.data.summary;
+    let lines = [];
+    lines.push(`=== Summary: ${s.created} added, ${s.duplicates_skipped} duplicates skipped, ${s.missing_zones} missing zone(s), ${s.bad_lines} bad line(s) ===`);
+    if (s.missing_zone_names.length) {
+      lines.push(`Missing zones (create them first or skip): ${s.missing_zone_names.join(", ")}`);
+    }
+    lines.push("");
+    r.data.results.forEach(res => {
+      lines.push(`[${res.type}] ${res.message}`);
+    });
+    out.textContent = lines.join("\n");
+    toast(s.created + " records added", true);
+    loadZones();
+  });
+}
+
+document.getElementById("mapper-file").addEventListener("change", function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    $("mapper-input").value = e.target.result;
+    toast("File loaded. Click Map Hosts.", true);
+  };
+  reader.readAsText(file);
+  this.value = "";
+});
+
 // ── Configuration ───────────────────────────────────────────────────────
 
 function initConfig() {
