@@ -65,9 +65,14 @@ the host's `/etc/bind` into the container and manages the host's `named` over
 the rndc TCP channel:
 
 ```bash
-cp .env.example .env    # set RNDC_HOST to your host/remote named's IP
+cp .env.example .env    # RNDC_HOST defaults to host.docker.internal
 docker compose up -d --build
 ```
+
+The compose file adds `extra_hosts: host.docker.internal → host-gateway`, so the
+container reaches the Docker host automatically (no need to hardcode a gateway IP).
+If your Docker doesn't support `host-gateway`, set `RNDC_HOST` in `.env` to the
+host's LAN IP or the compose network gateway.
 
 > **Requirement:** a container cannot reach the host's local rndc UNIX control
 > socket, so the target `named` must listen on TCP 953. If your `named.conf`
@@ -75,8 +80,19 @@ docker compose up -d --build
 > ```
 > controls { inet 0.0.0.0 port 953 allow { any; } keys { "rndc-key"; }; };
 > ```
-> (and make sure the mounted key matches — copy the target's `rndc.key` to a
-> directory mounted at `/etc/bind/rndc.key` in the container).
+> then restart named, e.g. `sudo systemctl restart named`. Also ensure the
+> mounted `/etc/bind` contains the matching `rndc.key`.
+
+For the **Logs** tab, host BIND should also write a log file. Add to the host's
+`named.conf.options` (so the mounted `/var/log/bind` has content to tail):
+
+```
+logging {
+    channel bind_webui_file { file "/var/log/bind/named.log" versions 3 size 5m; severity info; };
+    category default { bind_webui_file; };
+    category queries { bind_webui_file; };
+};
+```
 
 All web-UI container settings are configured via the `.env` file (see
 `.env.example`): `RNDC_HOST`, `RNDC_PORT`, `WEBUI_PORT`, `LOG_FILE`.

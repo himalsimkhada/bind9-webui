@@ -67,8 +67,11 @@ function refreshStatus() {
     if (!r.ok) {
       $("stat-running").textContent = "Error";
       $("stat-running").className = "value red";
+      $("status-error").textContent = "rndc error: " + r.error;
+      $("status-error").classList.remove("hidden");
       return;
     }
+    $("status-error").classList.add("hidden");
     const d = r.data;
     $("stat-running").textContent = d.running ? "Running" : "Stopped";
     $("stat-running").className = "value " + (d.running ? "green" : "red");

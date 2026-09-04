@@ -504,8 +504,7 @@ def get_stats():
 
 
 def get_status():
-    out, _, rc = _run(_rndc_cmd("status"))
-    return out
+    return rndc("status")
 
 
 def get_status_structured():
@@ -549,20 +548,38 @@ def query_log(status=True):
 # ── Logs ────────────────────────────────────────────────────────────────────
 
 def get_logs(lines=100, query=""):
+    out = ""
     log_file = os.environ.get("LOG_FILE", "").strip()
+    candidates = []
     if log_file:
-        out, _, _ = _run(f"tail -n {lines} {log_file}")
+        candidates.append(("LOG_FILE", f"tail -n {lines} {log_file}"))
     else:
-        out, _, _ = _run(f"{_sudo()}journalctl -u named --no-pager -n {lines}")
-        if not out:
-            out, _, _ = _run(f"{_sudo()}tail -n {lines} /var/log/syslog 2>/dev/null | grep -i named")
-        if not out and _IS_ROOT:
-            out, _, _ = _run(f"tail -n {lines} /var/lib/bind/named.log 2>/dev/null")
+        candidates = [
+            ("journalctl", f"{_sudo()}journalctl -u named --no-pager -n {lines}"),
+            ("syslog", f"{_sudo()}tail -n {lines} /var/log/syslog 2>/dev/null | grep -i named"),
+            ("bind lib log", "tail -n {0} /var/lib/bind/named.log 2>/dev/null".format(lines)),
+            ("bind var log", "tail -n {0} /var/log/bind/named.log 2>/dev/null".format(lines)),
+        ]
+
+    last_err = ""
+    for name, cmd in candidates:
+        o, e, _ = _run(cmd)
+        if o:
+            out = o
+            break
+        if e:
+            last_err = name
+
     if query:
         filtered = [ln for ln in out.splitlines() if query.lower() in ln.lower()]
         out = "\n".join(filtered)
     if not out:
-        out = "No logs found."
+        if log_file:
+            out = f"No logs from {log_file} ({last_err or 'file missing/empty'}). Set LOG_FILE to an existing BIND log file (see .env.example)."
+        elif last_err != "journalctl":
+            out = "No named logs found."
+        else:
+            out = "No logs found (journalctl unavailable in this container; set LOG_FILE to a mounted BIND log file)."
     return out
 
 

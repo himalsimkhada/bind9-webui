@@ -309,6 +309,17 @@ textarea {
   color: var(--accent);
 }
 
+.status-error {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--red);
+  border-radius: 4px;
+  color: var(--red);
+  background: rgba(255, 0, 0, 0.06);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
 .mapper-output {
   margin-top: 10px;
   max-height: 300px;

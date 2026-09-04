@@ -31,9 +31,13 @@ services:
       RNDC_KEY: /etc/bind/rndc.key
       BIND_CONF_DIR: /etc/bind
       ZONE_DIR: /etc/bind
-      LOG_FILE: ${LOG_FILE:-}
+      LOG_FILE: ${LOG_FILE:-/var/log/bind/named.log}
+    extra_hosts:
+      # Make host.docker.internal resolve to the Docker host gateway, so
+      # RNDC_HOST=host.docker.internal reaches host/remote BIND on TCP 953.
+      - "host.docker.internal:host-gateway"
     volumes:
       # Mount the host's BIND config dir (config + zone files + rndc.key).
       - /etc/bind:/etc/bind
-      # Optional: mount a host BIND log dir for the Logs tab (set LOG_FILE).
-      # - ${HOST_BIND_LOG_DIR:-/var/log/bind}:/var/log/bind
+      # Mount the host BIND log dir so the Logs tab can tail LOG_FILE.
+      - ${HOST_BIND_LOG_DIR:-/var/log/bind}:/var/log/bind

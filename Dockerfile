@@ -9,8 +9,9 @@ ENV PYTHONUNBUFFERED=1 \
 # rndc, named-checkzone/conf, dig, and curl for healthchecks
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       bind9utils bind9-dnsutils dnsutils curl \
-    && rm -rf /var/lib/apt/lists/*
+       bind9-utils bind9-dnsutils dnsutils curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/cache/bind /var/log/bind
 
 WORKDIR /app
 

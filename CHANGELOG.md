@@ -4,6 +4,15 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1] - 2026-09-04
+
+### Fixed (Docker / web-UI container)
+
+- **Dashboard not showing data** — `rndc status` errors were swallowed (returned an empty string), leaving the dashboard blank. `get_status()` now propagates the real rndc error, and the UI shows it on a readable error banner.
+- **Container could not reach host BIND** — `127.0.0.1` inside the container refers to the container, not the host. Added `extra_hosts: host.docker.internal → host-gateway` to `docker-compose.yml`, so `RNDC_HOST=host.docker.internal` resolves to the Docker host gateway. (Also documented that host `named` must listen on TCP 953 via a `controls` block.)
+- **Logs not showing** — a bug where `LOG_FILE` was executed as a command instead of `tail`-ed, and no log source existed. Fixed `get_logs()` to build a proper `tail` command, fall back through multiple sources, and return a clear message. Host BIND now writes `/var/log/bind/named.log` which is mounted and tailed.
+- **`named-checkconf` failing in container** — the image lacked `/var/cache/bind` (referenced by the host config's `directory`). Now created in the `Dockerfile`.
+
 ## [0.4.0] - 2026-09-04
 
 ### Added
