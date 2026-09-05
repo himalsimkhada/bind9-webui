@@ -1,14 +1,11 @@
 <div align="center">
 
 ```
- ______  _     _   _  ____  ______      _   _ ____  _____ ___ ___ 
-|  __ \ | |   (_) / |/ ___||  _ \ \    / \ | | __ )| ____|_ _/ _ \
-| |__) || |    _  | | |  _ | | | \ \  / / \| |  _ \|  _|  | | | | |
-|  ___/ | |   | | | | |_| || |_| |\ \/ / /\ \ | |_) | |___ | | |_| |
-| |     | |___| |_| |\____/|  __/  \  /  \ \_\ |  __/|_____|___\___/
-|_|     |_____/_(_)_\_____/|_|      \/    \___/|_|                  
-                                                                    
-
+ _     _           _  ___                    _           _
+| |__ (_)_ __   __| |/ _ \     __      _____| |__  _   _(_)
+| '_ \| | '_ \ / _` | (_) |____\ \ /\ / / _ \ '_ \| | | | |
+| |_) | | | | | (_| |\__, |_____\ V  V /  __/ |_) | |_| | |
+|_.__/|_|_| |_|\__,_|  /_/       \_/\_/ \___|_.__/ \__,_|_|
 ```
 
 ### Control your BIND9 server from a modern web UI
@@ -27,6 +24,41 @@
 One command install, or run it from a container. Works with bare-metal BIND, a BIND container, or a remote `named` over rndc.
 
 </div>
+
+---
+
+## Install — one line
+
+Copy-paste this. No cloning, no setup — the installer bootstraps itself, then asks
+which of the three deployments you want:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
+```
+
+> Not ready yet? `./install.sh --check` does a safe dry run and reports what the
+> installer would detect on your machine without changing anything.
+
+---
+
+## Table of Contents
+
+- [Why bind9-webui?](#why-bind9-webui)
+- [Features](#features)
+- [Look & feel](#looks-like-this)
+- [Install & quick start](#quick-start)
+- [Requirements](#requirements)
+- [Deployment options](#deployment-options)
+  - [1. Full Docker stack](#option-1--full-docker-stack)
+  - [2. Host BIND + Docker](#option-2--host-bind--docker)
+  - [3. Manual (bare-metal)](#option-3--manual-bare-metal)
+- [Configuration](#configuration)
+- [Security notes](#security-notes)
+- [API reference](#api-reference)
+- [Development](#development)
+- [Project structure](#project-structure)
+- [How it works](#how-it-works)
+- [License](#license)
 
 ---
 
@@ -138,7 +170,8 @@ The web UI runs against **either** a bare-metal BIND or an Ubuntu BIND container
 | **2. Host BIND + Docker** | Web UI in a container, BIND on the host | You keep your existing BIND, UI stays containerized |
 | **3. Manual** | Everything on this machine, systemd service | Minimal footprint, single server |
 
-### Option 1 — Full Docker stack (`docker compose`)
+### Option 1 — Full Docker stack
+
 Two containers, one command: the official `ubuntu/bind9` image (port 53 UDP/TCP + TCP 953 for rndc) and this project's web UI (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the UI drives BIND over `rndc -s bind9 -p 953`.
 
 ```bash
@@ -151,7 +184,7 @@ docker compose -f docker-compose-w-bind9.yml up -d --build
 > rndc-confgen -a -c docker/bind/rndc.key && chmod 644 docker/bind/rndc.key
 > ```
 
-### Option 2 — Web UI container controlling host/remote BIND
+### Option 2 — Host BIND + Docker
 Run only the web-UI image and point it at BIND that already runs on the host (or elsewhere). The compose file mounts the host's `/etc/bind` into the container and manages `named` over the rndc TCP channel:
 
 ```bash
@@ -187,7 +220,7 @@ logging {
 };
 ```
 
-### Option 3 — Manual / bare-metal (default)
+### Option 3 — Manual (bare-metal)
 Everything on this one machine, managed as a systemd service. Web UI at `http://localhost:5000`.
 
 ```bash
