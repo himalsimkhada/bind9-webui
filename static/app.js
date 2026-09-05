@@ -70,6 +70,9 @@ function login() {
 
 function logout() {
   api("POST", "/api/logout");
+  $("login-password").value = "";
+  $("login-remember").checked = false;
+  $("login-error").classList.add("hidden");
   showLogin();
 }
 
