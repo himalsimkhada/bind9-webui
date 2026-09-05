@@ -1,7 +1,10 @@
+import io
 import os
+import time
+from collections import defaultdict
 from datetime import timedelta
 
-from flask import Flask, jsonify, request, render_template, session
+from flask import Flask, jsonify, request, render_template, session, send_file
 import bind_manager as bm
 
 app = Flask(__name__)
@@ -11,6 +14,41 @@ WEBUI_PASSWORD = os.environ.get("WEBUI_PASSWORD", "").strip()
 app.secret_key = os.environ.get("SECRET_KEY", "bind9-webui-dev-secret-change-me")
 # "Remember me" sessions auto-logout after 30 minutes.
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+
+# Brute-force protection: N failed logins per IP within the window = temporary lockout.
+MAX_LOGIN_FAILURES = 5
+LOGIN_FAIL_WINDOW = 900      # seconds
+LOGIN_LOCKOUT = 900          # seconds
+_login_failures = defaultdict(list)  # ip -> [timestamps]
+_login_locked_until = {}             # ip -> timestamp
+
+
+def _client_ip():
+    return request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or "unknown"
+
+
+def _lockout_remaining(ip):
+    until = _login_locked_until.get(ip, 0)
+    remaining = int(until - time.time())
+    if remaining > 0:
+        return remaining
+    if until:
+        _login_locked_until.pop(ip, None)
+    return 0
+
+
+def _record_failure(ip):
+    now = time.time()
+    _login_failures[ip] = [t for t in _login_failures[ip] if now - t < LOGIN_FAIL_WINDOW]
+    _login_failures[ip].append(now)
+    if len(_login_failures[ip]) >= MAX_LOGIN_FAILURES:
+        _login_locked_until[ip] = now + LOGIN_LOCKOUT
+        _login_failures.pop(ip, None)
+
+
+def _clear_failures(ip):
+    _login_failures.pop(ip, None)
+    _login_locked_until.pop(ip, None)
 
 
 def is_authenticated():
@@ -61,10 +99,16 @@ def api_session():
 def api_login():
     if not WEBUI_PASSWORD:
         return _err("Authentication is not enabled")
+    ip = _client_ip()
+    remaining = _lockout_remaining(ip)
+    if remaining > 0:
+        return _err(f"Too many failed attempts. Try again in {int(remaining / 60)} minute(s).", code=429)
     data = request.json or {}
     password = data.get("password", "")
     if password != WEBUI_PASSWORD:
+        _record_failure(ip)
         return _err("Incorrect password", code=401)
+    _clear_failures(ip)
     session["auth"] = True
     # Remember me -> persistent cookie that auto-expires in 30 minutes.
     session.permanent = bool(data.get("remember", False))
@@ -269,6 +313,51 @@ def api_logs():
     lines = request.args.get("lines", 100, type=int)
     query = request.args.get("query", "")
     return _ok(bm.get_logs(lines=lines, query=query))
+
+
+# ── Backup / Restore ────────────────────────────────────────────────────────
+
+@app.route("/api/backup")
+def api_backup():
+    try:
+        data = bm.backup_data()
+        ts = time.strftime("%Y-%m-%d_%H%M%S")
+        return send_file(
+            io.BytesIO(data),
+            mimetype="application/gzip",
+            as_attachment=True,
+            download_name=f"bind9-backup-{ts}.tar.gz",
+        )
+    except Exception as e:
+        return _err(e)
+
+
+@app.route("/api/restore", methods=["POST"])
+def api_restore():
+    f = request.files.get("file")
+    if not f:
+        return _err("No backup file uploaded")
+    try:
+        res = bm.restore_backup(f.read())
+        return _ok(res, msg="Backup restored")
+    except Exception as e:
+        return _err(e)
+
+
+# ── Dig ─────────────────────────────────────────────────────────────────────
+
+@app.route("/api/dig", methods=["POST"])
+def api_dig():
+    data = request.json or {}
+    query = data.get("q", "").strip()
+    rtype = (data.get("type") or "A").strip()
+    server = data.get("server", "").strip() or None
+    if not query:
+        return _err("Query required (e.g. example.com or 8.8.8.8)")
+    try:
+        return _ok(bm.dig(query, rtype=rtype, server=server))
+    except Exception as e:
+        return _err(e)
 
 
 # ── rndc Controls ───────────────────────────────────────────────────────────

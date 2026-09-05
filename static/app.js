@@ -390,6 +390,81 @@ document.getElementById("mapper-file").addEventListener("change", function() {
   this.value = "";
 });
 
+// ── Dig ─────────────────────────────────────────────────────────────────
+
+function runDig() {
+  const q = $("dig-q").value.trim();
+  if (!q) return toast("Enter a name to look up", false);
+  const type = $("dig-type").value;
+  const server = $("dig-server").value.trim();
+  const el = $("dig-output");
+  el.textContent = "Querying...";
+  api("POST", "/api/dig", { q, type, server }).then(r => {
+    if (!r.ok) {
+      el.textContent = "Error: " + r.error;
+      return;
+    }
+    const d = r.data;
+    el.textContent = `> dig @${d.server} ${d.query} ${d.type}\n\n` + d.output;
+  });
+}
+
+$("dig-q").addEventListener("keydown", e => { if (e.key === "Enter") runDig(); });
+
+// ── Backup / Restore ────────────────────────────────────────────────────
+
+function downloadBackup() {
+  const status = $("backup-status");
+  status.textContent = "Preparing backup...";
+  fetch("/api/backup").then(r => {
+    if (!r.ok) return r.json().then(j => {
+      status.textContent = "Error: " + j.error;
+    });
+    return r.blob();
+  }).then(blob => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = ("bind9-backup-" + new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-") + ".tar.gz");
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    status.textContent = "Backup downloaded.";
+  });
+}
+
+document.getElementById("restore-file").addEventListener("change", function() {
+  const file = this.files[0];
+  if (!file) return;
+  if (!confirm("Restore this backup? This OVERWRITES the current BIND config and zone files. A backup of the current state is kept for rollback.")) {
+    this.value = "";
+    return;
+  }
+  const status = $("backup-status");
+  status.textContent = "Restoring...";
+  const fd = new FormData();
+  fd.append("file", file);
+  fetch("/api/restore", { method: "POST", body: fd }).then(r => r.json()).then(r => {
+    if (r.ok) {
+      const w = r.data && r.data.warnings;
+      if (w && w.length) {
+        status.textContent = "Restored with zone warnings: " + w.join(" | ");
+        toast("Restored (some zones flagged)", false);
+      } else {
+        status.textContent = "Restored.";
+        toast("Backup restored", true);
+      }
+      if (currentConfigFile) loadCurrentConfig();
+    } else {
+      status.textContent = "Restore failed: " + r.error;
+      toast("Restore failed", false);
+    }
+  });
+  this.value = "";
+});
+
 // ── Configuration ───────────────────────────────────────────────────────
 
 function initConfig() {

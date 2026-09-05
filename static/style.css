@@ -339,6 +339,10 @@ textarea {
   max-height: 300px;
 }
 
+.dig-output {
+  margin-top: 10px;
+}
+
 .file-btn {
   display: inline-flex;
   align-items: center;

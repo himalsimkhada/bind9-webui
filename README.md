@@ -9,8 +9,11 @@ A lightweight web interface for managing BIND9 (named) DNS server. Runs on top o
 - **Zone Source Control** — one-click move zones between `named.conf.local` and `named.conf.default-zones`, with protected flag for built-in system zones and filesystem path display
 - **Host Mapper** — paste or upload `IP host1 host2 ...` lines to bulk-create A records in existing zones (with duplicate and missing-zone reporting)
 - **Configuration** — edit all conf files (`named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones`) with full comment preservation
+- **Backup / Restore** — one-click download of all config + zone files (+ rndc key) as a gzipped tarball, and validated restore (`named-checkconf`/`named-checkzone`; config gate is hard, zone issues reported as warnings)
+- **DNS Lookup (Dig)** — run `dig` queries from the UI against the managed BIND
 - **Logs** — built-in log viewer with line count control and text filtering
 - **Validation** — zone and config checking via `named-checkconf` / `named-checkzone`
+- **Access Protection** — single shared password (`WEBUI_PASSWORD`), "remember me" 30-minute auto-logout session, log out button, and brute-force lockout (5 failed logins → 15 min block)
 - **Dark/Light Mode** — toggle theme, persisted in browser
 - **Minimal footprint** — Flask + vanilla HTML/CSS/JS, ~32 MB RAM
 
@@ -76,12 +79,14 @@ host's LAN IP or the compose network gateway.
 
 > **Requirement:** a container cannot reach the host's local rndc UNIX control
 > socket, so the target `named` must listen on TCP 953. If your `named.conf`
-> does not already expose it, add:
+> does not already expose it, add a **restricted** block (never `allow { any; }`)
 > ```
-> controls { inet 0.0.0.0 port 953 allow { any; } keys { "rndc-key"; }; };
+> controls { inet 0.0.0.0 port 953 allow { 127.0.0.1; ::1; 172.16.0.0/12; } keys { "rndc-key"; }; };
 > ```
 > then restart named, e.g. `sudo systemctl restart named`. Also ensure the
-> mounted `/etc/bind` contains the matching `rndc.key`.
+> mounted `/etc/bind` contains the matching `rndc.key`. The `172.16.0.0/12`
+> covers Docker bridge/compose subnetworks (the range Docker assigns); tighten
+> it to your exact subnet if you prefer.
 
 For the **Logs** tab, host BIND should also write a log file. Add to the host's
 `named.conf.options` (so the mounted `/var/log/bind` has content to tail):

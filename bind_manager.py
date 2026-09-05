@@ -1,6 +1,10 @@
+import io
 import os
 import re
+import shlex
+import shutil
 import subprocess
+import tarfile
 from pathlib import Path
 
 BIND_CONF_DIR = os.environ.get("BIND_CONF_DIR", "/etc/bind")
@@ -599,3 +603,144 @@ def check_zone(zone_name):
     zone_path = _resolve_zone_path(zone['file'])
     out, err, rc = _run(f"{_sudo()}named-checkzone {zone_name} {zone_path}")
     return {"valid": rc == 0, "output": out, "error": err}
+
+
+# ── Backup / Restore ────────────────────────────────────────────────────────
+# The backup is an in-memory gzipped tarball containing the four BIND config
+# files, every referenced zone data file, and the rndc key.
+
+BACKUP_MEMBERS = {
+    "named.conf": NAMED_CONF,
+    "named.conf.options": NAMED_CONF_OPTIONS,
+    "named.conf.local": NAMED_CONF_LOCAL,
+    "named.conf.default-zones": NAMED_CONF_DEFAULT_ZONES,
+}
+
+
+def backup_data():
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+        for name, path in BACKUP_MEMBERS.items():
+            content = _read_file(path)
+            if not content:
+                continue
+            info = tarfile.TarInfo(name=f"bind-config/{name}")
+            data = content.encode()
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+
+        seen = set()
+        for zone in get_zones():
+            fpath = _resolve_zone_path(zone['file'])
+            if not os.path.exists(fpath) or fpath in seen:
+                continue
+            seen.add(fpath)
+            info = tarfile.TarInfo(name=f"zones/{os.path.basename(fpath)}")
+            raw = Path(fpath).read_bytes()
+            info.size = len(raw)
+            tf.addfile(info, io.BytesIO(raw))
+
+        key_path = os.environ.get("RNDC_KEY", f"{BIND_CONF_DIR}/rndc.key")
+        if os.path.exists(key_path):
+            info = tarfile.TarInfo(name="keys/rndc.key")
+            raw = Path(key_path).read_bytes()
+            info.size = len(raw)
+            tf.addfile(info, io.BytesIO(raw))
+    return buf.getvalue()
+
+
+def _restore_zone_path(basename):
+    """Match a backed-up zone file to the path an existing zone uses, else BIND_CONF_DIR."""
+    for zone in get_zones():
+        fpath = _resolve_zone_path(zone['file'])
+        if os.path.basename(fpath) == basename:
+            return fpath
+    return f"{BIND_CONF_DIR}/{basename}"
+
+
+def restore_backup(data):
+    """Restore config + zone files from a backup tarball, validating before/after."""
+    member_data = {}
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tf:
+        for member in tf.getmembers():
+            if not member.isfile():
+                continue
+            name = member.name.replace("\\", "/")
+            member_data[name] = tf.extractfile(member).read()
+
+    if not any(n.endswith("/named.conf") for n in member_data):
+        raise RuntimeError("Backup does not contain a named.conf — refusing to restore")
+
+    def _find_member(basename):
+        """Locate a tarball entry by filename, ignoring the bind-config/ prefix."""
+        if basename in member_data:
+            return basename
+        prefixed = f"bind-config/{basename}"
+        return prefixed if prefixed in member_data else None
+
+    # Map zone file basenames -> real zone names so named-checkzone can validate.
+    basename_to_zone = {os.path.basename(_resolve_zone_path(z['file'])): z['name'] for z in get_zones()}
+
+    # Snapshot everything we are about to overwrite so we can roll back.
+    backup_dir = Path(f"/tmp/bind_ui_restore_{os.getpid()}")
+    shutil.rmtree(backup_dir, ignore_errors=True)
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    target_map = []
+    for name, path in BACKUP_MEMBERS.items():
+        arc = _find_member(name)
+        if arc is None:
+            continue
+        if os.path.exists(path):
+            shutil.copy2(path, backup_dir / f"conf-{name}")
+        target_map.append((path, member_data[arc]))
+
+    zone_map = []
+    for arc, payload in member_data.items():
+        if not arc.startswith("zones/") or arc == "zones/":
+            continue
+        dest = _restore_zone_path(os.path.basename(arc))
+        if os.path.exists(dest):
+            shutil.copy2(dest, backup_dir / f"zone-{os.path.basename(arc)}")
+        zone_map.append((dest, payload))
+
+    try:
+        for path, payload in target_map + zone_map:
+            _write_file(path, payload.decode(errors="replace"))
+            _chown_zone(path)
+
+        result = check_config()
+        if not result["valid"]:
+            raise RuntimeError(f"Restored config failed named-checkconf: {result['error']}")
+
+        # Zone files are advisory: report failures as warnings, not fatal. A bad
+        # zone file only drops that one zone (named keeps running), exactly like
+        # the pre-restore state; the config gate above still protects the server.
+        warnings = []
+        for dest, _ in zone_map:
+            zname = basename_to_zone.get(os.path.basename(dest)) or os.path.basename(dest).removeprefix("db.")
+            out, err, rc = _run(f"{_sudo()}named-checkzone {shlex.quote(zname)} {shlex.quote(dest)}")
+            if rc != 0:
+                warnings.append(f"{zname}: {(err or out).strip()}")
+
+        rndc("reload")
+        return {"config_files": len(target_map), "zone_files": len(zone_map), "warnings": warnings}
+    finally:
+        shutil.rmtree(backup_dir, ignore_errors=True)
+
+
+# ── Dig ─────────────────────────────────────────────────────────────────────
+
+def dig(query, rtype="A", server=None):
+    server = (server or "").strip() or os.environ.get("RNDC_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    if not re.match(r'^[A-Za-z0-9.:_-]+$', server):
+        raise RuntimeError("Invalid nameserver")
+    cmd = f"{_sudo()}dig @{server} {shlex.quote(query)} {shlex.quote(rtype)} +time=3 +tries=1 +nocmd +nostats"
+    out, err, rc = _run(cmd, check=False)
+    return {
+        "query": query,
+        "type": rtype,
+        "server": server,
+        "output": (out or err).strip(),
+        "rc": rc,
+    }

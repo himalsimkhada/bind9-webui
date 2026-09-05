@@ -13,6 +13,7 @@
       <nav>
         <button class="nav-btn active" data-view="dashboard">Dashboard</button>
         <button class="nav-btn" data-view="zones">Zones</button>
+        <button class="nav-btn" data-view="dig">Dig</button>
         <button class="nav-btn" data-view="config">Configuration</button>
         <button class="nav-btn" data-view="logs">Logs</button>
       </nav>
@@ -25,7 +26,7 @@
 <section id="view-login" class="view login-view hidden">
   <div class="card login-card">
     <h2 class="login-title">BIND9 <span class="dim">Web UI</span></h2>
-    <p class="login-msg">Enter the UI password to continue. Sessions auto-logout after 30 minutes.</p>
+    <p class="login-msg">Enter the UI password to continue. Sessions auto-logout after 30 minutes. After 5 failed attempts, login is locked for 15 minutes.</p>
     <div class="login-form">
       <label for="login-password">Password</label>
       <input type="password" id="login-password" placeholder="UI password" autocomplete="current-password" />
@@ -151,6 +152,24 @@
     </div>
   </section>
 
+  <!-- Dig -->
+  <section id="view-dig" class="view">
+    <div class="card">
+      <h3>DNS Lookup (dig)</h3>
+      <div class="inline-form">
+        <input id="dig-q" placeholder="example.com" style="min-width:220px" />
+        <select id="dig-type">
+          <option>A</option><option>AAAA</option><option>CNAME</option>
+          <option>MX</option><option>TXT</option><option>NS</option>
+          <option>PTR</option><option>SOA</option><option>ANY</option>
+        </select>
+        <input id="dig-server" placeholder="server (default: managed BIND)" style="min-width:200px" />
+        <button onclick="runDig()">Query</button>
+      </div>
+      <pre id="dig-output" class="dig-output">Run a query against the managed BIND server.</pre>
+    </div>
+  </section>
+
   <!-- Configuration -->
   <section id="view-config" class="view">
     <div class="card">
@@ -162,6 +181,17 @@
         <button class="secondary" onclick="checkConfigFromConf()">Check Config</button>
         <pre id="config-save-output" class="small-output"></pre>
       </div>
+    </div>
+
+    <div class="card">
+      <h3>Backup / Restore</h3>
+      <div class="btn-row">
+        <button onclick="downloadBackup()">Download Backup</button>
+        <label class="file-btn secondary" for="restore-file">Restore Backup</label>
+        <input type="file" id="restore-file" accept=".tar.gz,.gz" style="display:none" />
+        <span id="backup-status" class="small-text"></span>
+      </div>
+      <p class="mapper-hint" style="margin-top:8px">Backup includes the BIND config files, all zone data files, and the rndc key. Restore validates with <code>named-checkconf</code>/<code>named-checkzone</code> before applying.</p>
     </div>
   </section>
 

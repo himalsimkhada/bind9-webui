@@ -4,6 +4,26 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-09-05
+
+### Added
+
+- **DNS Lookup (Dig tab)** — query the managed BIND from the UI (`POST /api/dig`).
+- **Backup / Restore** — `GET /api/backup` downloads a gzipped tarball of all config files, zone files, and the rndc key; `POST /api/restore` restores it with validation (`named-checkconf` is a hard gate + rollback; `named-checkzone` failures are reported as warnings). UI in the Configuration view.
+- **Brute-force lockout** — 5 failed logins per IP within a 15-minute window locks login for 15 minutes (`429`).
+- **Docker healthchecks** — both compose files now health-check the web UI container via `curl /api/session`.
+- **Tests** — pytest suite covering zone parsing, record building, host→zone resolution, host mapper, backup/restore mapping + rollback, and the full auth/lockout flow (`tests/`, `requirements-dev.txt`).
+- **CI** — GitHub Actions workflow (`.github/workflows/ci.yml`) runs the suite on Python 3.11/3.12.
+
+### Security
+
+- **Restricted rndc `controls`** on the host — `allow` narrowed from `any` to `{ 127.0.0.1; ::1; 172.16.0.0/12; }` (loopback + Docker private bridge range). Docs/examples updated from `allow { any; }`.
+
+### Fixed
+
+- **Backup restore did not restore config files** — tarball members are stored under `bind-config/` but were matched by bare filename, so only zone files were applied. Restore now matches by basename; verified end-to-end (marker test).
+- **Leftover invalid `example.com` zone** on the host (missing `ns1` A glue record, pre-dating the `add_zone` glue fix) now loads: a record was added through the UI and `named-checkzone` passes.
+
 ## [0.5.0] - 2026-09-04
 
 ### Added
