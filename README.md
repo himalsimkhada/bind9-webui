@@ -92,27 +92,11 @@ It deals only with the same config files and the same control channel real admin
 
 ## Looks like this
 
-```
- ┌─ bind9-webui ───────────────────────────────────────────────────────────┐
- │  ▸ Dashboard  ▸ Zones  ▸ Config  ▸ Logs  ▸ Dig  ▸ Backup         🔑 │
- ├──────────────────────────────────────────────────────────────────────────┤
- │  BIND 9.20   ● running                  uptime 12d 04:11 ▸ Auto-refresh  │
- │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐                    │
- │  │ Zones  6 │ │ Records 147│ │ Queries 1.2M│ │ Cache hits 86%│            │
- │  └──────────┘ └──────────┘ └──────────┘ └───────────┘                    │
- │                                                                           │
- │  Zones:  search…                            Selected zone: example.com   │
- │  ┌────────────────────┐                     ┌──────────────────────────┐ │
- │  │ example.com        │                     │ Zone Records | Host Mapper│ │
- │  │ .                  │  source local       │  @  3600  A    192.0.2.10│ │
- │  │ localhost          │  path  db.example   │  ns1 3600  A    192.0.2.10│ │
- │  │ 127.in-addr.arpa   │  check ▸ OK         │  www 3600  CNAME @      │ │
- │  └────────────────────┘                     │  mail 3600 MX   10 @     │ │
- │                                             └──────────────────────────┘ │
- └──────────────────────────────────────────────────────────────────────────┘
-```
+Real screenshots (dark mode) of a running instance:
 
-*(Stylized mock-up of the dashboard and the master/detail zone view.)*
+![Dashboard — live server status with stat boxes and rndc controls](screenshots/dashboard.png)
+
+![Zones — master/detail workspace with records panel](screenshots/zones.png)
 
 ---
 
