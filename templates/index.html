@@ -13,6 +13,7 @@
       <nav>
         <button class="nav-btn active" data-view="dashboard">Dashboard</button>
         <button class="nav-btn" data-view="zones">Zones</button>
+        <button class="nav-btn" data-view="mapper">Host Mapper</button>
         <button class="nav-btn" data-view="dig">Dig</button>
         <button class="nav-btn" data-view="config">Configuration</button>
         <button class="nav-btn" data-view="logs">Logs</button>
@@ -81,74 +82,146 @@
 
   <!-- Zones -->
   <section id="view-zones" class="view">
-    <div class="zones-layout">
-      <div class="card">
-        <h3>Zones <button class="right" onclick="showAddZone()">+ Add Zone</button></h3>
-        <div id="add-zone-form" class="inline-form hidden">
-          <input id="new-zone-name" placeholder="example.com" />
-          <select id="new-zone-type">
-            <option value="master">Master</option>
-            <option value="slave">Slave</option>
-          </select>
-          <button onclick="createZone()">Create</button>
-          <button class="secondary" onclick="hideAddZone()">Cancel</button>
+    <div class="zones-master-detail">
+      <div class="card zones-panel">
+        <div class="zones-panel-head">
+          <h3>Zones <span class="zones-count dim" id="zones-count"></span></h3>
+          <button onclick="showAddZone()">+ New Zone</button>
         </div>
-        <div class="zones-table-wrap">
-          <table id="zones-table">
-            <thead><tr><th>Zone</th><th>Type</th><th>Source</th><th></th></tr></thead>
-            <tbody id="zones-body"></tbody>
+        <div class="zones-toolbar">
+          <input id="zone-search" type="search" placeholder="Search zones…" autocomplete="off" />
+          <select id="zone-filter">
+            <option value="all">All</option>
+            <option value="local">local</option>
+            <option value="default">default-zones</option>
+          </select>
+        </div>
+        <div id="zones-list" class="zones-list"></div>
+        <div id="zones-empty" class="zones-empty hidden">No zones match.</div>
+      </div>
+
+      <div id="zone-detail" class="card zone-detail hidden">
+        <div class="zone-detail-head">
+          <h3 id="zone-detail-name">Records</h3>
+          <div id="zone-info" class="zone-info-inline"></div>
+        </div>
+        <div id="zone-source" class="zone-source"></div>
+        <div class="inline-form">
+          <input id="rec-name" placeholder="name (@ for apex)" />
+          <select id="rec-type">
+            <option>A</option><option>AAAA</option><option>CNAME</option>
+            <option>MX</option><option>TXT</option><option>NS</option>
+            <option>PTR</option><option>SRV</option>
+          </select>
+          <input id="rec-value" placeholder="value" />
+          <input id="rec-ttl" type="number" value="3600" title="TTL (seconds)" style="width:80px" />
+          <button onclick="addRecord()">Add Record</button>
+        </div>
+        <div class="records-table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>TTL</th><th>Type</th><th>Value</th><th></th></tr></thead>
+            <tbody id="records-body"></tbody>
           </table>
+        </div>
+        <div id="zone-raw-wrap" class="hidden">
+          <h4>Raw Zone File <span class="small-text">Expert mode — edit the file directly</span></h4>
+          <textarea id="zone-raw-editor" rows="14" spellcheck="false"></textarea>
+          <div class="btn-row" style="margin-top:8px">
+            <button onclick="saveRawZone()">Save Raw File</button>
+            <button class="secondary" onclick="reloadRawZone()">Revert</button>
+            <span id="zone-raw-status" class="small-text"></span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="secondary" onclick="toggleRaw()">Edit Raw File</button>
+          <button class="secondary" onclick="checkZone()">Check Zone</button>
+          <button class="danger" onclick="deleteZone()">Delete Zone</button>
+          <pre id="zone-check-output" class="small-output"></pre>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Host Mapper</h3>
-        <p class="mapper-hint">Paste lines of <code>IP host1 host2 ...</code> or upload a file. Creates A records in the matching existing zone for each host.</p>
-        <textarea id="mapper-input" rows="10" spellcheck="false" placeholder="10.5.8.100 example.com www.example.com&#10;10.5.8.102 himal.com"></textarea>
-        <div class="btn-row">
-          <button onclick="runMapper()">Map Hosts</button>
-          <button class="secondary" onclick="clearMapper()">Clear</button>
-          <label class="file-btn secondary" for="mapper-file">Upload File</label>
-          <input type="file" id="mapper-file" accept=".txt,.hosts,.csv" style="display:none" />
-        </div>
-        <pre id="mapper-output" class="mapper-output hidden"></pre>
+      <div id="zone-placeholder" class="card zone-detail zone-placeholder">
+        <h3>Zones</h3>
+        <p>Select a zone from the list to manage its records, or create a new one.</p>
       </div>
     </div>
 
-    <div id="zone-detail" class="card hidden">
-      <h3 id="zone-detail-name">Zone Records</h3>
-      <div class="zone-info" id="zone-info"></div>
-      <div class="zone-source" id="zone-source"></div>
-      <div class="inline-form">
-        <input id="rec-name" placeholder="name" />
-        <select id="rec-type">
-          <option>A</option><option>AAAA</option><option>CNAME</option>
-          <option>MX</option><option>TXT</option><option>NS</option>
-          <option>PTR</option><option>SRV</option>
-        </select>
-        <input id="rec-value" placeholder="value" />
-        <input id="rec-ttl" type="number" value="3600" style="width:80px" />
-        <button onclick="addRecord()">Add</button>
-      </div>
-      <table>
-        <thead><tr><th>Name</th><th>TTL</th><th>Type</th><th>Value</th><th></th></tr></thead>
-        <tbody id="records-body"></tbody>
-      </table>
-      <div id="zone-raw-wrap" class="hidden">
-        <h4>Raw Zone File</h4>
-        <textarea id="zone-raw-editor" rows="14" spellcheck="false"></textarea>
-        <div class="btn-row" style="margin-top:8px">
-          <button onclick="saveRawZone()">Save Raw File</button>
-          <button class="secondary" onclick="reloadRawZone()">Revert</button>
-          <span id="zone-raw-status" class="small-text"></span>
+    <!-- Add Zone wizard -->
+    <div id="add-zone-modal" class="modal-mask hidden">
+      <div class="modal">
+        <div class="modal-head">
+          <h3>Add Zone</h3>
+          <button class="secondary modal-close" onclick="hideAddZone()" title="Close">&#10005;</button>
+        </div>
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tab-simple" onclick="wizardTab('simple')">Simple</button>
+          <button class="tab-btn" id="tab-advanced" onclick="wizardTab('advanced')">Advanced</button>
+        </div>
+
+        <div id="wizard-simple" class="wizard-pane">
+          <div class="wizard-fields">
+            <label>Zone name
+              <input id="wz-name" placeholder="example.com" spellcheck="false" />
+            </label>
+            <label>Type
+              <select id="wz-type">
+                <option value="master">Master</option>
+                <option value="slave">Slave</option>
+              </select>
+            </label>
+            <label>TTL (seconds)
+              <input id="wz-ttl" type="number" value="3600" min="0" />
+            </label>
+            <label>Primary IP (www / mail / ns1)
+              <input id="wz-ip" value="127.0.0.1" />
+            </label>
+          </div>
+          <div class="wizard-presets">
+            <h4>Start with common records</h4>
+            <label class="preset"><input type="checkbox" id="p-ns" checked /> NS + ns1 A record <span class="small-text">(recommended)</span></label>
+            <label class="preset"><input type="checkbox" id="p-www" /> www &#8594; A record</label>
+            <label class="preset"><input type="checkbox" id="p-mail" /> mail &#8594; A + @ MX record</label>
+            <label class="preset"><input type="checkbox" id="p-txt" /> @ TXT (SPF) record</label>
+            <label class="preset"><input type="checkbox" id="p-ns2" /> ns2 &#8594; A record</label>
+          </div>
+          <div class="wizard-actions">
+            <h4>Zone file preview</h4>
+            <pre id="wz-preview" class="wz-preview">Enter a zone name to see it live.</pre>
+          </div>
+        </div>
+
+        <div id="wizard-advanced" class="wizard-pane hidden">
+          <div class="wizard-fields">
+            <label>Zone name
+              <input id="wz-name-adv" placeholder="example.com" spellcheck="false" />
+            </label>
+          </div>
+          <p class="mapper-hint">Paste a complete zone file below. It is written exactly as-is (SOA, $ORIGIN, comments are preserved) and validated with <code>named-checkzone</code> before creating.</p>
+          <textarea id="wz-raw" rows="16" spellcheck="false" placeholder="$TTL 3600&#10;$ORIGIN example.com.&#10;@ IN SOA ns1.example.com. admin.example.com (&#10;        2026010101 ; serial&#10;        3600       ; refresh&#10;        900        ; retry&#10;        604800     ; expire&#10;        86400      ; minimum&#10;    )&#10;@ IN NS ns1.example.com.&#10;ns1 IN A 127.0.0.1"></textarea>
+        </div>
+
+        <div id="wz-status" class="status-error hidden"></div>
+        <div class="modal-actions">
+          <button class="secondary" onclick="hideAddZone()">Cancel</button>
+          <button onclick="createZone()">Create Zone</button>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Host Mapper -->
+  <section id="view-mapper" class="view">
+    <div class="card">
+      <h3>Host Mapper</h3>
+      <p class="mapper-hint">Paste lines of <code>IP host1 host2 ...</code> or upload a file. Creates A records in the matching existing zone for each host.</p>
+      <textarea id="mapper-input" rows="10" spellcheck="false" placeholder="10.5.8.100 example.com www.example.com&#10;10.5.8.102 himal.com"></textarea>
       <div class="btn-row">
-        <button class="secondary" onclick="toggleRaw()">Edit Raw File</button>
-        <button class="secondary" onclick="checkZone()">Check Zone</button>
-        <button class="danger" onclick="deleteZone()">Delete Zone</button>
-        <pre id="zone-check-output" class="small-output"></pre>
+        <button onclick="runMapper()">Map Hosts</button>
+        <button class="secondary" onclick="clearMapper()">Clear</button>
+        <label class="file-btn secondary" for="mapper-file">Upload File</label>
+        <input type="file" id="mapper-file" accept=".txt,.hosts,.csv" style="display:none" />
       </div>
+      <pre id="mapper-output" class="mapper-output hidden"></pre>
     </div>
   </section>
 

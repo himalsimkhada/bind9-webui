@@ -123,6 +123,26 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
   });
 });
 
+// Wire the zones search/filter and Add Zone wizard inputs.
+document.querySelectorAll("#zone-search").forEach(el => el.addEventListener("input", loadZones));
+document.querySelectorAll("#zone-filter").forEach(el => el.addEventListener("change", loadZones));
+["wz-name", "wz-ttl", "wz-ip"].forEach(id => {
+  document.querySelectorAll("#" + id).forEach(el => el.addEventListener("input", updateWizardPreview));
+});
+document.querySelectorAll("#wizard-simple input[type=checkbox]").forEach(el => {
+  el.addEventListener("change", updateWizardPreview);
+});
+document.querySelectorAll("#wz-name, #wz-name-adv").forEach(el => {
+  el.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); createZone(); }
+  });
+});
+document.querySelectorAll("#add-zone-modal").forEach(el => {
+  el.addEventListener("keydown", e => {
+    if (e.key === "Escape") hideAddZone();
+  });
+});
+
 // ── Dashboard ───────────────────────────────────────────────────────────
 
 function refreshStatus() {
@@ -176,35 +196,149 @@ function checkConfig() {
 function loadZones() {
   api("GET", "/api/zones").then(r => {
     if (!r.ok) return toast(r.error, false);
-    const body = $("zones-body");
-    body.innerHTML = "";
-    r.data.forEach(z => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${z.name}</td><td>${z.type}</td><td>${z.source}</td>
-        <td><button class="secondary" onclick="viewZone('${z.name}')">View</button></td>`;
-      body.appendChild(tr);
+    const q = ($("zone-search").value || "").trim().toLowerCase();
+    const f = $("zone-filter").value;
+    const all = r.data || [];
+    const filtered = all.filter(z =>
+      (f === "all" || z.source === f) &&
+      (!q || z.name.toLowerCase().includes(q))
+    );
+    $("zones-count").textContent = "· " + filtered.length + (filtered.length === 1 ? " zone" : " zones");
+    $("zones-empty").classList.toggle("hidden", filtered.length > 0);
+
+    const list = $("zones-list");
+    list.innerHTML = "";
+    filtered.forEach(z => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "zone-item" + (z.name === currentZone ? " active" : "");
+      const srcCls = z.source === "default" ? "default" : "local";
+      item.innerHTML = `<span class="zone-item-name">${z.name}</span>
+        <span class="zone-item-tags">
+          <span class="zone-item-type">${z.type}</span>
+          <span class="zone-item-src ${srcCls}">${z.source}</span>
+        </span>`;
+      item.onclick = () => viewZone(z.name);
+      item.dataset.zone = z.name;
+      list.appendChild(item);
     });
+    if (currentZone && !all.some(z => z.name === currentZone)) {
+      currentZone = null;
+      $("zone-detail").classList.add("hidden");
+      $("zone-placeholder").classList.remove("hidden");
+    }
   });
 }
 
-function showAddZone() { $("add-zone-form").classList.remove("hidden"); }
-function hideAddZone() { $("add-zone-form").classList.add("hidden"); }
+// ── Add Zone wizard ──────────────────────────────────────────────────────
+
+let wizardMode = "simple";
+
+function showAddZone() {
+  wizardMode = "simple";
+  $("wz-status").classList.add("hidden");
+  $("add-zone-modal").classList.remove("hidden");
+  $("wizard-simple").classList.remove("hidden");
+  $("wizard-advanced").classList.add("hidden");
+  $("tab-simple").classList.add("active");
+  $("tab-advanced").classList.remove("active");
+  updateWizardPreview();
+  $("wz-name").focus();
+}
+
+function hideAddZone() {
+  $("add-zone-modal").classList.add("hidden");
+}
+
+function wizardTab(mode) {
+  wizardMode = mode;
+  $("wizard-simple").classList.toggle("hidden", mode !== "simple");
+  $("wizard-advanced").classList.toggle("hidden", mode !== "advanced");
+  $("tab-simple").classList.toggle("active", mode === "simple");
+  $("tab-advanced").classList.toggle("active", mode === "advanced");
+  if (mode === "advanced") $("wz-name-adv").focus();
+  else updateWizardPreview();
+}
+
+function wizardZoneName() {
+  return (wizardMode === "simple" ? $("wz-name").value : $("wz-name-adv").value).trim();
+}
+
+function wizardRecords(name) {
+  const ttl = parseInt($("wz-ttl").value) || 3600;
+  const ip = ($("wz-ip").value || "").trim() || "127.0.0.1";
+  const recs = [];
+  if ($("p-ns").checked) {
+    recs.push({ name: "@", type: "NS", value: "ns1." + name + "." });
+    recs.push({ name: "ns1", type: "A", value: ip });
+  }
+  if ($("p-ns2").checked) recs.push({ name: "ns2", type: "A", value: ip });
+  if ($("p-www").checked) recs.push({ name: "www", type: "A", value: ip });
+  if ($("p-mail").checked) {
+    recs.push({ name: "mail", type: "A", value: ip });
+    recs.push({ name: "@", type: "MX", value: "10 mail." + name + "." });
+  }
+  if ($("p-txt").checked) recs.push({ name: "@", type: "TXT", value: "v=spf1 ip4:" + ip + " -all" });
+  return recs;
+}
+
+let _wzPreviewTimer = null;
+
+function updateWizardPreview() {
+  const name = $("wz-name").value.trim();
+  if (!name) {
+    $("wz-preview").textContent = "Enter a zone name to see it live.";
+    return;
+  }
+  if (!/^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+\.?$/.test(name)) {
+    $("wz-preview").textContent = "Zone names look like example.com (letters, numbers, hyphens, dots).";
+    return;
+  }
+  clearTimeout(_wzPreviewTimer);
+  _wzPreviewTimer = setTimeout(() => {
+    api("POST", "/api/zone/preview", {
+      name,
+      ttl: parseInt($("wz-ttl").value) || 3600,
+      records: wizardRecords(name),
+    }).then(r => {
+      $("wz-preview").textContent = r.ok ? r.data.body : "Preview error: " + r.error;
+    });
+  }, 150);
+}
+
+function showWzError(msg) {
+  const el = $("wz-status");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
 
 function createZone() {
-  const name = $("new-zone-name").value.trim();
-  if (!name) return;
-  api("POST", "/api/zone", { name, type: $("new-zone-type").value }).then(r => {
-    toast(r.ok ? "Zone created" : r.error, r.ok);
-    if (r.ok) {
-      hideAddZone();
-      $("new-zone-name").value = "";
-      loadZones();
-    }
+  const name = wizardZoneName();
+  if (!name) return showWzError("Enter a zone name");
+  $("wz-status").classList.add("hidden");
+  const payload = { name, type: wizardMode === "simple" ? $("wz-type").value : "master" };
+  if (wizardMode === "simple") {
+    payload.records = wizardRecords(name);
+    payload.ttl = parseInt($("wz-ttl").value) || 3600;
+  } else {
+    payload.body = $("wz-raw").value;
+    if (!payload.body.trim()) return showWzError("Paste a zone file first, or use the Simple tab");
+  }
+  api("POST", "/api/zone", payload).then(r => {
+    if (!r.ok) return showWzError(r.error);
+    toast("Zone created", true);
+    hideAddZone();
+    loadZones();
+    viewZone(name);
   });
 }
 
 function viewZone(name) {
   currentZone = name;
+  $("zone-placeholder").classList.add("hidden");
+  document.querySelectorAll(".zone-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.zone === name);
+  });
   api("GET", "/api/zone/" + name).then(r => {
     if (!r.ok) return toast(r.error, false);
     zoneDoc = r.data;
@@ -288,6 +422,7 @@ function deleteZone() {
     if (r.ok) {
       currentZone = null;
       $("zone-detail").classList.add("hidden");
+      $("zone-placeholder").classList.remove("hidden");
       loadZones();
     }
   });

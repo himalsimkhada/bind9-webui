@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import time
 from collections import defaultdict
 from datetime import timedelta
@@ -66,6 +67,15 @@ def _ok(data=None, msg=None):
 
 def _err(msg, code=400):
     return jsonify({"ok": False, "error": str(msg)}), code
+
+
+_ZONE_NAME_RE = re.compile(r"^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.?$")
+
+
+def _valid_zone_name(name):
+    if len(name) > 253 or ".." in name:
+        return False
+    return bool(_ZONE_NAME_RE.match(name)) and "." in name.rstrip(".")
 
 
 @app.before_request
@@ -203,9 +213,42 @@ def api_zone_create():
     name = data.get("name", "").strip()
     if not name:
         return _err("Zone name required")
+    if not _valid_zone_name(name):
+        return _err("Invalid zone name (letters, digits, dots, hyphens only)")
+    body = data.get("body")
+    if body is not None and body.strip():
+        check = bm.validate_zone_body(name, body)
+        if not check["valid"]:
+            return _err(f"Zone file invalid:\n{(check['error'] or check['output']).strip()}")
     try:
-        bm.add_zone(name, zone_type=data.get("type", "master"))
+        bm.add_zone(
+            name,
+            zone_type=data.get("type", "master"),
+            records=data.get("records"),
+            body=body,
+            ttl=int(data.get("ttl", 3600) or 3600),
+        )
         return _ok(msg=f"Zone {name} created")
+    except Exception as e:
+        return _err(e)
+
+
+@app.route("/api/zone/preview", methods=["POST"])
+def api_zone_preview():
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return _err("Zone name required")
+    if not _valid_zone_name(name):
+        return _err("Invalid zone name (letters, digits, dots, hyphens only)")
+    try:
+        body = bm.build_zone_file(
+            name,
+            data.get("records", []),
+            soa={"primary_ns": f"ns1.{name}.", "admin_email": f"admin.{name}"},
+            ttl=int(data.get("ttl", 3600) or 3600),
+        )
+        return _ok(data={"body": body})
     except Exception as e:
         return _err(e)
 

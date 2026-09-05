@@ -5,11 +5,11 @@
 # control channel. It mounts the host's /etc/bind so it can read/write the
 # same config and zone files that `named` uses.
 #
-# Note: a container cannot use the host's local rndc UNIX control socket, so
-# your host/remote `named` must listen on TCP 953. If your `named.conf` does
-# not already expose it, add a block like:
+# Notes:
+#   your host/remote `named` must listen on TCP 953. If your `named.conf` does
+#   not already expose it, add a restricted block (never 'any'):
 #
-#   controls { inet 0.0.0.0 port 953 allow { any; } keys { "rndc-key"; }; };
+#   controls { inet 0.0.0.0 port 953 allow { 127.0.0.1; ::1; 172.16.0.0/12; } keys { "rndc-key"; }; };
 #
 # Optional host-config values come from an `.env` file (copy .env.example ->
 # .env and edit). Otherwise sensible defaults are used.

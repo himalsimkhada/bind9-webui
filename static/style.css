@@ -284,35 +284,269 @@ textarea {
   margin-bottom: 10px;
 }
 
-.zones-layout {
+/* ── Zones: master/detail layout ──────────────────────────────────────── */
+
+.zones-master-detail {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
 
 @media (max-width: 900px) {
-  .zones-layout {
+  .zones-master-detail {
     grid-template-columns: 1fr;
   }
 }
 
-.zones-layout .card {
+.zones-master-detail .card {
   margin-bottom: 0;
 }
 
-#zone-detail {
-  margin-top: 4px;
-  clear: both;
+.zones-panel {
+  position: sticky;
+  top: 12px;
 }
 
-#zone-detail.card {
-  margin-top: 20px;
+.zones-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
-.zones-layout .card > .zones-table-wrap {
-  max-height: 420px;
+.zones-count {
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.zones-toolbar {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+
+.zones-toolbar input {
+  flex: 1;
+  min-width: 0;
+}
+
+.zones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 72vh;
   overflow-y: auto;
+  padding-right: 2px;
+}
+
+.zone-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.zone-item:hover { border-color: var(--accent); background: var(--surface2); }
+
+.zone-item.active {
+  border-color: var(--accent);
+  background: var(--surface2);
+}
+
+.zone-item.active .zone-item-name { color: var(--accent); }
+
+.zone-item-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.zone-item-tags { display: flex; gap: 6px; align-items: center; }
+
+.zone-item-type {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+}
+
+.zone-item-src {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.zone-item-src.local { color: var(--accent); }
+.zone-item-src.default { color: var(--dim); }
+
+.zones-empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.zone-detail { min-width: 0; }
+
+.zone-detail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.zone-detail-head h3 { margin-bottom: 12px; }
+
+.zone-info-inline {
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.zone-info-inline code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: var(--accent);
+}
+
+.zone-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--dim);
+  min-height: 240px;
+}
+
+.zone-placeholder p { font-size: 12px; }
+
+.records-table-wrap {
+  max-height: 50vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+/* ── Add Zone wizard modal ────────────────────────────────────────────── */
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 16px 16px;
+  z-index: 500;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 22px;
+  width: min(640px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.modal-head h3 { margin-bottom: 0; }
+
+.modal-close { padding: 2px 10px; line-height: 1.4; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.wizard-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wizard-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .wizard-fields { grid-template-columns: 1fr; }
+}
+
+.wizard-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.wizard-fields input,
+.wizard-fields select {
+  width: 100%;
+}
+
+.wizard-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.wizard-presets h4 {
+  font-size: 12px;
+  color: var(--dim);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.preset {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.wizard-actions h4 {
+  font-size: 12px;
+  color: var(--dim);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.wz-preview {
+  max-height: 220px;
+  margin: 0;
+  font-size: 11px;
 }
 
 .mapper-hint code {

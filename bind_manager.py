@@ -5,6 +5,7 @@ import shlex
 import shutil
 import subprocess
 import tarfile
+import tempfile
 from pathlib import Path
 
 BIND_CONF_DIR = os.environ.get("BIND_CONF_DIR", "/etc/bind")
@@ -256,7 +257,7 @@ def build_zone_file(zone_name, records, soa=None, ttl=3600, origin=None):
 
 # ── Zone Management ─────────────────────────────────────────────────────────
 
-def add_zone(zone_name, zone_type="master", records=None):
+def add_zone(zone_name, zone_type="master", records=None, body=None, ttl=3600):
     zones = get_zones()
     if any(z["name"] == zone_name for z in zones):
         raise RuntimeError(f"Zone {zone_name} already exists")
@@ -264,17 +265,20 @@ def add_zone(zone_name, zone_type="master", records=None):
     zone_file = f"db.{zone_name}"
     zone_path = f"{ZONE_DIR}/{zone_file}"
 
-    if records is None:
-        records = [
-            {"name": "@", "type": "NS", "value": f"ns1.{zone_name}.", "ttl": 3600},
-            {"name": "ns1", "type": "A", "value": "127.0.0.1", "ttl": 3600},
-        ]
+    if body is not None and body.strip():
+        content = body
+    else:
+        if records is None:
+            records = [
+                {"name": "@", "type": "NS", "value": f"ns1.{zone_name}.", "ttl": 3600},
+                {"name": "ns1", "type": "A", "value": "127.0.0.1", "ttl": 3600},
+            ]
 
-    default_soa = {
-        "primary_ns": f"ns1.{zone_name}.",
-        "admin_email": f"admin.{zone_name}",
-    }
-    content = build_zone_file(zone_name, records, soa=default_soa)
+        default_soa = {
+            "primary_ns": f"ns1.{zone_name}.",
+            "admin_email": f"admin.{zone_name}",
+        }
+        content = build_zone_file(zone_name, records, soa=default_soa, ttl=ttl)
     _write_file(zone_path, content)
     _chown_zone(zone_path)
 
@@ -285,6 +289,23 @@ def add_zone(zone_name, zone_type="master", records=None):
 
     rndc("reload")
     return True
+
+
+def validate_zone_body(zone_name, body):
+    """Run named-checkzone against a temp copy of the body (origin = zone_name)."""
+    fd, tmp = tempfile.mkstemp(prefix="bindui-wz-", suffix=".zone")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(body)
+        out, err, rc = _run(
+            f"{_sudo()}named-checkzone {shlex.quote(zone_name)} {shlex.quote(tmp)}"
+        )
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+    return {"valid": rc == 0, "output": out, "error": err}
 
 
 def remove_zone(zone_name):

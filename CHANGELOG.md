@@ -4,6 +4,23 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.1] - 2026-09-05
+
+### Changed (Zones UI rework)
+
+- **Master/detail layout** — the Zones tab is now a searchable, filterable list on the left (source/type badges, active highlight, sticky panel) with a records detail panel on the right. No more two crammed columns + a full-width table.
+- **Add Zone wizard** — "+ New Zone" opens a modal with two modes:
+  - *Simple*: zone name, type, TTL, and checkbox presets for common records (NS + ns1, www, mail + MX, SPF TXT, ns2), with a **live zone-file preview** generated server-side.
+  - *Advanced*: paste a full raw zone file; it is validated with `named-checkzone` before anything is written (rollback-free, nothing is created on error).
+  - Enter submits, Esc closes, live preview refreshes as you type.
+- **Host Mapper moved to its own nav tab** so it no longer crowds the zone list.
+- Zone name validation on create (letters/digits/dots/hyphens, must be a FQDN) — bad names are rejected before touching BIND.
+
+### Added
+
+- `POST /api/zone/preview` (returns the generated zone file for the Simple wizard).
+- Zone creation now accepts `records`, `ttl`, and `body` (raw zone file) server-side.
+
 ## [0.6.0] - 2026-09-05
 
 ### Added

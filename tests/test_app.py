@@ -138,3 +138,59 @@ def test_dig_requires_query(client):
     _login(client)
     r = client.post("/api/dig", json={})
     assert r.status_code == 400
+
+
+# ── Zone create / preview wizard ───────────────────────────────────────
+
+def test_zone_preview_returns_body(client):
+    _login(client)
+    r = client.post("/api/zone/preview", json={
+        "name": "example.com",
+        "ttl": 3600,
+        "records": [{"name": "www", "type": "A", "value": "10.0.0.1"}],
+    })
+    assert r.status_code == 200
+    body = r.get_json()["data"]["body"]
+    assert "$ORIGIN example.com." in body
+    assert "$TTL 3600" in body
+    assert "www\tIN\tA\t10.0.0.1" in body
+
+
+def test_zone_create_rejects_invalid_name(client):
+    _login(client)
+    r = client.post("/api/zone", json={"name": "bad name!",
+                                       "ttl": 3600,
+                                       "records": []})
+    assert r.status_code == 400
+    assert "Invalid zone name" in r.get_json()["error"]
+
+
+def test_zone_create_raw_valid_body(client, monkeypatch):
+    _login(client)
+    calls = {}
+    monkeypatch.setattr(a.bm, "validate_zone_body",
+                        lambda name, body: {"valid": True, "output": "OK", "error": ""})
+
+    def fake_add(name, **kw):
+        calls.update({"name": name, **kw})
+
+    monkeypatch.setattr(a.bm, "add_zone", fake_add)
+    r = client.post("/api/zone", json={"name": "raw.example.com", "body": "$TTL 3600\n"})
+    assert r.status_code == 200
+    assert calls["name"] == "raw.example.com"
+    assert calls["body"] == "$TTL 3600\n"
+    assert calls["zone_type"] == "master"
+
+
+def test_zone_create_raw_invalid_body(client, monkeypatch):
+    _login(client)
+    monkeypatch.setattr(a.bm, "validate_zone_body",
+                        lambda name, body: {"valid": False, "output": "", "error": "bad zone file"})
+
+    def fake_add(name, **kw):
+        raise AssertionError("add_zone must not be called for an invalid body")
+
+    monkeypatch.setattr(a.bm, "add_zone", fake_add)
+    r = client.post("/api/zone", json={"name": "raw.example.com", "body": "garbage"})
+    assert r.status_code == 400
+    assert "Zone file invalid" in r.get_json()["error"]
