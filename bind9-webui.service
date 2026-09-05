@@ -6,8 +6,9 @@ Requires=named.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/home/himal/workspace/bind9-web-ui
-ExecStart=/home/himal/workspace/bind9-web-ui/venv/bin/python3 app.py
+WorkingDirectory=__DIR__
+ExecStart=__DIR__/venv/bin/python3 app.py
+EnvironmentFile=-/etc/bind9-webui.env
 Restart=on-failure
 RestartSec=5
 

@@ -46,6 +46,8 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       # Mount the host's BIND config dir (config + zone files + rndc.key).
-      - /etc/bind:/etc/bind
+      # BIND_HOST_DIR is set by ./install.sh (mode 2) to the detected config
+      # dir on non-Debian distros (/etc/named).
+      - ${BIND_HOST_DIR:-/etc/bind}:/etc/bind
       # Mount the host BIND log dir so the Logs tab can tail LOG_FILE.
       - ${HOST_BIND_LOG_DIR:-/var/log/bind}:/var/log/bind

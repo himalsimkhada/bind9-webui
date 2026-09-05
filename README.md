@@ -35,14 +35,27 @@ talks to `named` through whichever transport you configure:
 
 ### Option 1 — Bare-metal (default)
 
+The installer walks you through it and asks which deployment you want; pick
+**3) Manual** for everything on this machine:
+
 ```bash
 git clone https://github.com/himalsimkhada/bind9-webui.git
 cd bind9-webui
-sudo bash install.sh
+./install.sh
 ```
-Web UI at `http://localhost:5000`.
+
+It detects your OS, installs BIND9 + Python deps if missing, prompts for the
+UI password, and sets up the systemd service. Web UI at `http://localhost:5000`.
 
 ### Option 2 — Full Docker stack (BIND + web UI, two containers)
+
+```bash
+git clone https://github.com/himalsimkhada/bind9-webui.git
+cd bind9-webui
+./install.sh            # choose 1) Full Docker stack
+```
+
+or manually:
 
 ```bash
 docker compose -f docker-compose-w-bind9.yml up -d --build
@@ -66,6 +79,18 @@ Run only the web-UI image and have it manage BIND that already runs elsewhere
 (the bare-metal host, or another machine). Use `docker-compose.yml` — it mounts
 the host's `/etc/bind` into the container and manages the host's `named` over
 the rndc TCP channel:
+
+```bash
+git clone https://github.com/himalsimkhada/bind9-webui.git
+cd bind9-webui
+./install.sh            # choose 2) Host BIND + Docker
+```
+
+The installer detects your OS and BIND config dir (`/etc/bind` on
+Debian/Ubuntu, `/etc/named` on RHEL/Arch), checks BIND is installed, adds the
+restricted rndc `controls` block to `named.conf`, adds a file logging channel,
+and writes `.env` before running `docker compose up -d --build`. Or do it by
+hand:
 
 ```bash
 cp .env.example .env    # RNDC_HOST defaults to host.docker.internal

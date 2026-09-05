@@ -4,6 +4,18 @@ All notable changes to bind9-webui will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.2] - 2026-09-05
+
+### Added
+
+- **Interactive installer** (`./install.sh`) — asks which of three deployments to run:
+  1. *Full Docker stack* — BIND9 + web UI containers; prompts for the UI password and runs `docker compose -f docker-compose-w-bind9.yml up -d --build`.
+  2. *Host BIND + Docker* — detects OS / BIND config dir (`/etc/bind` vs `/etc/named`), checks/installs BIND, generates the rndc key, adds the restricted TCP 953 `controls` block and a file logging channel to named, writes `.env`, then runs the web-UI-only compose file.
+  3. *Manual* — all on the host: detects OS, installs BIND9 + Python deps if missing, sets up a venv, writes the UI password/secret to `/etc/bind9-webui.env`, and installs the systemd service.
+  - `./install.sh --check` prints detected distro / bind dir / log dir / rndc key / dependency status without making changes.
+- `docker-compose.yml` mount is now parameterized (`BIND_HOST_DIR`, `HOST_BIND_LOG_DIR`) so non-Debian distros work with the installer.
+- `bind9-webui.service` is a template (`__DIR__` placeholder) installed with the real path; reads credentials via `EnvironmentFile`.
+
 ## [0.6.1] - 2026-09-05
 
 ### Changed (Zones UI rework)
