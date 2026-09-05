@@ -7,7 +7,7 @@ A lightweight web interface for managing BIND9 (named) DNS server. Runs on top o
 - **Dashboard** — structured server status with stat boxes, rndc controls (reload, flush, stats, querylog)
 - **Zone Management** — master/detail layout (searchable list + records panel). Guided **Add Zone wizard** with a *Simple* tab (name, type, TTL, and checkboxes to pre-seed common NS/ns1/www/mail/SPF records with a live zone-file preview) and an *Advanced* tab that accepts a paste-in raw zone file validated with `named-checkzone`. Record add/remove, edit raw zone files directly, and check/delete are available in the detail panel.
 - **Zone Source Control** — one-click move zones between `named.conf.local` and `named.conf.default-zones`, with protected flag for built-in system zones and filesystem path display
-- **Host Mapper** — its own nav tab: paste or upload `IP host1 host2 ...` lines to bulk-create A records in existing zones (with duplicate and missing-zone reporting)
+- **Host Mapper** — built into the Zones tab with a *Zone Records* / *Host Mapper* switch: paste or upload `IP host1 host2 ...` lines to bulk-create A records in existing zones (with duplicate and missing-zone reporting)
 - **Configuration** — edit all conf files (`named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones`) with full comment preservation
 - **Backup / Restore** — one-click download of all config + zone files (+ rndc key) as a gzipped tarball, and validated restore (`named-checkconf`/`named-checkzone`; config gate is hard, zone issues reported as warnings)
 - **DNS Lookup (Dig)** — run `dig` queries from the UI against the managed BIND

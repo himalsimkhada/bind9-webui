@@ -303,6 +303,42 @@ textarea {
   margin-bottom: 0;
 }
 
+.zones-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.zones-switch {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.zones-switch-btn {
+  background: none;
+  border: none;
+  color: var(--dim);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+
+.zones-switch-btn:hover { color: var(--text); }
+
+.zones-switch-btn.active {
+  background: var(--surface2);
+  color: var(--accent);
+}
+
 .zones-panel {
   position: sticky;
   top: 12px;

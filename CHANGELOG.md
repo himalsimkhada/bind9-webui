@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - *Simple*: zone name, type, TTL, and checkbox presets for common records (NS + ns1, www, mail + MX, SPF TXT, ns2), with a **live zone-file preview** generated server-side.
   - *Advanced*: paste a full raw zone file; it is validated with `named-checkzone` before anything is written (rollback-free, nothing is created on error).
   - Enter submits, Esc closes, live preview refreshes as you type.
-- **Host Mapper moved to its own nav tab** so it no longer crowds the zone list.
+- **Host Mapper merged into the Zones tab** with a *Zone Records* / *Host Mapper* segmented switch in the detail panel — it gets the full right-side width instead of a cramped half-column, and the nav bar stays clean.
 - Zone name validation on create (letters/digits/dots/hyphens, must be a FQDN) — bad names are rejected before touching BIND.
 
 ### Added

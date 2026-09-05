@@ -193,6 +193,22 @@ function checkConfig() {
 
 // ── Zones ───────────────────────────────────────────────────────────────
 
+// ── Zones: right-panel switch (records vs host mapper) ─────────────────
+
+function zonesDetail(mode) {
+  $("sw-records").classList.toggle("active", mode === "records");
+  $("sw-mapper").classList.toggle("active", mode === "mapper");
+  $("mapper-panel").classList.toggle("hidden", mode !== "mapper");
+  if (mode === "mapper") {
+    $("zone-detail").classList.add("hidden");
+    $("zone-placeholder").classList.add("hidden");
+  } else {
+    const has = !!(currentZone && zoneDoc);
+    $("zone-detail").classList.toggle("hidden", !has);
+    $("zone-placeholder").classList.toggle("hidden", has);
+  }
+}
+
 function loadZones() {
   api("GET", "/api/zones").then(r => {
     if (!r.ok) return toast(r.error, false);
@@ -224,9 +240,9 @@ function loadZones() {
     });
     if (currentZone && !all.some(z => z.name === currentZone)) {
       currentZone = null;
-      $("zone-detail").classList.add("hidden");
-      $("zone-placeholder").classList.remove("hidden");
+      zoneDoc = null;
     }
+    zonesDetail($("sw-mapper").classList.contains("active") ? "mapper" : "records");
   });
 }
 
@@ -335,7 +351,7 @@ function createZone() {
 
 function viewZone(name) {
   currentZone = name;
-  $("zone-placeholder").classList.add("hidden");
+  zonesDetail("records");
   document.querySelectorAll(".zone-item").forEach(el => {
     el.classList.toggle("active", el.dataset.zone === name);
   });
@@ -421,8 +437,8 @@ function deleteZone() {
     toast(r.ok ? "Zone deleted" : r.error, r.ok);
     if (r.ok) {
       currentZone = null;
-      $("zone-detail").classList.add("hidden");
-      $("zone-placeholder").classList.remove("hidden");
+      zoneDoc = null;
+      zonesDetail("records");
       loadZones();
     }
   });
