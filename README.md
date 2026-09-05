@@ -1,41 +1,98 @@
-# bind9-webui
+<div align="center">
 
-A lightweight web interface for managing BIND9 (named) DNS server. Runs on top of your existing BIND9 installation — no modifications to your DNS setup required.
+```
+ ______  _     _   _  ____  ______      _   _ ____  _____ ___ ___ 
+|  __ \ | |   (_) / |/ ___||  _ \ \    / \ | | __ )| ____|_ _/ _ \
+| |__) || |    _  | | |  _ | | | \ \  / / \| |  _ \|  _|  | | | | |
+|  ___/ | |   | | | | |_| || |_| |\ \/ / /\ \ | |_) | |___ | | |_| |
+| |     | |___| |_| |\____/|  __/  \  /  \ \_\ |  __/|_____|___\___/
+|_|     |_____/_(_)_\_____/|_|      \/    \___/|_|                  
+                                                                    
+
+```
+
+### Control your BIND9 server from a modern web UI
+
+**A lightweight, dependency-free web interface** that manages BIND9 (`named`) exactly like you do from the shell — zero rebuilding, zero reconfiguration, no database, ~32 MB RAM.
+
+<!-- badges (static, no network lookups) -->
+![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
+![BIND9](https://img.shields.io/badge/BIND9-9.10+-9A3324?logo=processingfoundation&logoColor=white)
+![Stack](https://img.shields.io/badge/Flask-Docker-Vanilla%20JS-green)
+![Docker](https://img.shields.io/badge/Docker-24273D?logo=docker&logoColor=white)
+![Style](https://img.shields.io/badge/dark%20%2F%20light-mode-blueviolet)
+![maintained](https://img.shields.io/badge/maintained-yes-2ea44f)
+![PRs](https://img.shields.io/badge/PRs-welcome-2ea44f)
+
+One command install, or run it from a container. Works with bare-metal BIND, a BIND container, or a remote `named` over rndc.
+
+</div>
+
+---
+
+## Why bind9-webui?
+
+Managing BIND9 normally means SSH-ing in, remembering `rndc` incantations, and hand-editing zone files that are easy to get wrong. This project gives you a polished, single-page dashboard for the daily DNS chores — while **touching nothing** about how BIND runs underneath.
+
+It deals only with the same config files and the same control channel real admins use (`rndc`, `named-checkconf`, `named-checkzone`). Your DNS setup stays yours; the UI just makes it pleasant.
+
+---
 
 ## Features
 
-- **Dashboard** — structured server status with stat boxes, rndc controls (reload, flush, stats, querylog)
-- **Zone Management** — master/detail layout (searchable list + records panel). Guided **Add Zone wizard** with a *Simple* tab (name, type, TTL, and checkboxes to pre-seed common NS/ns1/www/mail/SPF records with a live zone-file preview) and an *Advanced* tab that accepts a paste-in raw zone file validated with `named-checkzone`. Record add/remove, edit raw zone files directly, and check/delete are available in the detail panel.
-- **Zone Source Control** — one-click move zones between `named.conf.local` and `named.conf.default-zones`, with protected flag for built-in system zones and filesystem path display
-- **Host Mapper** — built into the Zones tab with a *Zone Records* / *Host Mapper* switch: paste or upload `IP host1 host2 ...` lines to bulk-create A records in existing zones (with duplicate and missing-zone reporting)
-- **Configuration** — edit all conf files (`named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones`) with full comment preservation
-- **Backup / Restore** — one-click download of all config + zone files (+ rndc key) as a gzipped tarball, and validated restore (`named-checkconf`/`named-checkzone`; config gate is hard, zone issues reported as warnings)
-- **DNS Lookup (Dig)** — run `dig` queries from the UI against the managed BIND
-- **Logs** — built-in log viewer with line count control and text filtering
-- **Validation** — zone and config checking via `named-checkconf` / `named-checkzone`
-- **Access Protection** — single shared password (`WEBUI_PASSWORD`), "remember me" 30-minute auto-logout session, log out button, and brute-force lockout (5 failed logins → 15 min block)
-- **Dark/Light Mode** — toggle theme, persisted in browser
-- **Minimal footprint** — Flask + vanilla HTML/CSS/JS, ~32 MB RAM
+| | |
+|---|---|
+| **Dashboard** | Live server state with stat boxes and the real `rndc` controls — reload, flush, stats, and querylog toggle. |
+| **Zone management** | Master/detail workspace: searchable zone list, records panel, and a guided **Add Zone wizard** with a *Simple* tab (name, type, TTL, common-record presets, live zone-file preview) and an *Advanced* tab for pasting a raw zone file that gets validated with `named-checkzone`. |
+| **Edit zones** | Add/remove records, open the raw zone file, `named-checkzone` it, delete it — all from the detail panel. |
+| **Zone source control** | Move zones between `named.conf.local` and `named.conf.default-zones` in one click, with a protected flag for built-in system zones and the real filesystem path on display. |
+| **Host Mapper** | Built into the Zones tab: paste `IP host1 host2 …` lines to bulk-create A records across existing zones, with duplicate and missing-zone reporting. |
+| **Config editor** | Edit `named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones` with full comment preservation. |
+| **Backup & restore** | One-click download of all config + zones (+ rndc key) as a gzipped tarball; validated restore with a hard config gate and zone issues downgraded to warnings. |
+| **DNS lookup (Dig)** | Run `dig` from the browser against the managed BIND. |
+| **Log viewer** | Tail BIND logs with line-count control and text filtering. |
+| **Validation** | `named-checkconf` / `named-checkzone` on demand, before and after edits. |
+| **Access protection** | Shared password (`WEBUI_PASSWORD`), 30-minute *remember me* session auto-logout, log-out button, and brute-force lockout (5 failures → 15 min block). |
+| **Dark & light mode** | Theme toggle, persisted in the browser. |
+| **Feather-light** | Flask + vanilla HTML/CSS/JS. No build step, no Node.js, no database — ~32 MB RAM. |
 
-## Requirements
+---
 
-- Linux with BIND9 installed (`apt install bind9 bind9-dnsutils`)
-- Python 3.10+
-- `sudo` access (for rndc and named config files)
-- Docker is optional — only required for the containerized deployment.
+## Looks like this
 
-## Quick install (one-liner)
+```
+ ┌─ bind9-webui ───────────────────────────────────────────────────────────┐
+ │  ▸ Dashboard  ▸ Zones  ▸ Config  ▸ Logs  ▸ Dig  ▸ Backup         🔑 │
+ ├──────────────────────────────────────────────────────────────────────────┤
+ │  BIND 9.20   ● running                  uptime 12d 04:11 ▸ Auto-refresh  │
+ │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐                    │
+ │  │ Zones  6 │ │ Records 147│ │ Queries 1.2M│ │ Cache hits 86%│            │
+ │  └──────────┘ └──────────┘ └──────────┘ └───────────┘                    │
+ │                                                                           │
+ │  Zones:  search…                            Selected zone: example.com   │
+ │  ┌────────────────────┐                     ┌──────────────────────────┐ │
+ │  │ example.com        │                     │ Zone Records | Host Mapper│ │
+ │  │ .                  │  source local       │  @  3600  A    192.0.2.10│ │
+ │  │ localhost          │  path  db.example   │  ns1 3600  A    192.0.2.10│ │
+ │  │ 127.in-addr.arpa   │  check ▸ OK         │  www 3600  CNAME @      │ │
+ │  └────────────────────┘                     │  mail 3600 MX   10 @     │ │
+ │                                             └──────────────────────────┘ │
+ └──────────────────────────────────────────────────────────────────────────┘
+```
 
-The installer bootstraps itself: when run as `curl | bash` it clones this repo,
-then asks which of the three deployments you want. Docker modes are checked for
-the `docker` binary, the compose plugin, and a reachable daemon before anything
-else happens.
+*(Stylized mock-up of the dashboard and the master/detail zone view.)*
+
+---
+
+## Quick start
+
+Install in one command — the installer **bootstraps itself** when streamed, cloning the repo before it runs:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
 ```
 
-Or clone and run it directly:
+Or clone and run directly:
 
 ```bash
 git clone https://github.com/himalsimkhada/bind9-webui.git
@@ -43,108 +100,84 @@ cd bind9-webui
 ./install.sh
 ```
 
-Both take you to the same menu:
+You'll be asked which of three deployments you want:
 
 ```
   1) Full Docker stack   - BIND9 and the web UI both in containers
-  2) Host BIND + Docker  - web UI container managing BIND installed on this machine
-  3) Manual              - BIND and the web UI both installed directly on this machine
+  2) Host BIND + Docker  - web UI container managing BIND on this machine
+  3) Manual              - BIND and the web UI both directly on this machine
 ```
 
-Run `./install.sh --check` to see what it detects on your machine (distro, BIND
-config dir, log dir, rndc key, installed dependencies) without changing anything.
+> **Dry run first:** `./install.sh --check` reports what the installer detects
+> on your machine (distro, BIND config dir, log dir, rndc key, installed
+> dependencies) without changing a thing.
 
-## Deployment Options
+---
 
-The web UI is deliberately flexible and can run against **either** a bare-metal
-BIND (the default) **or** an Ubuntu BIND container — without code changes. It
-talks to `named` through whichever transport you configure:
+## Requirements
+
+- Linux with BIND9 installed (`apt install bind9 bind9-dnsutils`)
+- Python 3.10+
+- `sudo` access (for `rndc` and named config files)
+- Docker is **optional** — needed only for the containerized deployments
+
+Supported distros: Debian/Ubuntu (apt), RHEL/Fedora (dnf), Arch (pacman).
+
+---
+
+## Deployment options
+
+The web UI runs against **either** a bare-metal BIND or an Ubuntu BIND container, **without code changes** — it talks to `named` through whichever transport you configure:
 
 - **Local (bare-metal):** `rndc` over the local UNIX control socket, reading/writing `/etc/bind/`.
-- **Remote (container or host over network):** `rndc` over TCP port 953 with a shared `rndc.key`.
+- **Remote (container or host over network):** `rndc` over TCP 953 with a shared `rndc.key`.
 
-### Option 1 — Bare-metal (default)
+| Option | What runs where | When to pick it |
+|---|---|---|
+| **1. Full Docker stack** | BIND9 + web UI, two containers | You want zero DNS tooling on the host |
+| **2. Host BIND + Docker** | Web UI in a container, BIND on the host | You keep your existing BIND, UI stays containerized |
+| **3. Manual** | Everything on this machine, systemd service | Minimal footprint, single server |
 
-The installer walks you through it and asks which deployment you want; pick
-**3) Manual** for everything on this machine:
-
-```bash
-git clone https://github.com/himalsimkhada/bind9-webui.git
-cd bind9-webui
-./install.sh
-```
-
-It detects your OS, installs BIND9 + Python deps if missing, prompts for the
-UI password, and sets up the systemd service. Web UI at `http://localhost:5000`.
-
-### Option 2 — Full Docker stack (BIND + web UI, two containers)
-
-```bash
-git clone https://github.com/himalsimkhada/bind9-webui.git
-cd bind9-webui
-./install.sh            # choose 1) Full Docker stack
-```
-
-or manually:
+### Option 1 — Full Docker stack (`docker compose`)
+Two containers, one command: the official `ubuntu/bind9` image (port 53 UDP/TCP + TCP 953 for rndc) and this project's web UI (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the UI drives BIND over `rndc -s bind9 -p 953`.
 
 ```bash
 docker compose -f docker-compose-w-bind9.yml up -d --build
 ```
-- `bind9` — the official `ubuntu/bind9` container (port 53 UDP/TCP, plus TCP 953 for rndc).
-- `webui` — this project's image (port 5000).
 
-Both share `./docker/bind/` config (`named.conf`, `rndc.key`, …) and two named
-volumes (`bind-zones` for zone data files, `bind-logs` for `named.log`). The
-web-UI container drives BIND over `rndc -s bind9 -p 953`.
-
-> **rndc key:** a pre-generated `rndc.key` is committed under `docker/bind/`.
-> For production, regenerate it before deployment:
+> **Production note:** a pre-generated `rndc.key` ships under `docker/bind/`.
+> Regenerate it before exposing anything:
 > ```bash
 > rndc-confgen -a -c docker/bind/rndc.key && chmod 644 docker/bind/rndc.key
 > ```
 
-### Option 3 — web-UI container controlling a host / remote BIND
-
-Run only the web-UI image and have it manage BIND that already runs elsewhere
-(the bare-metal host, or another machine). Use `docker-compose.yml` — it mounts
-the host's `/etc/bind` into the container and manages the host's `named` over
-the rndc TCP channel:
+### Option 2 — Web UI container controlling host/remote BIND
+Run only the web-UI image and point it at BIND that already runs on the host (or elsewhere). The compose file mounts the host's `/etc/bind` into the container and manages `named` over the rndc TCP channel:
 
 ```bash
-git clone https://github.com/himalsimkhada/bind9-webui.git
-cd bind9-webui
-./install.sh            # choose 2) Host BIND + Docker
+./install.sh     # choose 2) Host BIND + Docker
 ```
 
-The installer detects your OS and BIND config dir (`/etc/bind` on
-Debian/Ubuntu, `/etc/named` on RHEL/Arch), checks BIND is installed, adds the
-restricted rndc `controls` block to `named.conf`, adds a file logging channel,
-and writes `.env` before running `docker compose up -d --build`. Or do it by
-hand:
+The installer detects your OS and BIND config dir (`/etc/bind` on Debian/Ubuntu, `/etc/named` on RHEL/Arch), verifies BIND, adds a **restricted** rndc `controls` block, adds a file logging channel, writes `.env`, then `docker compose up -d --build`. Manually:
 
 ```bash
 cp .env.example .env    # RNDC_HOST defaults to host.docker.internal
 docker compose up -d --build
 ```
 
-The compose file adds `extra_hosts: host.docker.internal → host-gateway`, so the
-container reaches the Docker host automatically (no need to hardcode a gateway IP).
-If your Docker doesn't support `host-gateway`, set `RNDC_HOST` in `.env` to the
-host's LAN IP or the compose network gateway.
+The compose file adds `extra_hosts: host.docker.internal → host-gateway`, so the container finds the Docker host automatically. If your Docker doesn't support `host-gateway`, set `RNDC_HOST` in `.env` to the host's LAN IP or the compose gateway.
 
-> **Requirement:** a container cannot reach the host's local rndc UNIX control
-> socket, so the target `named` must listen on TCP 953. If your `named.conf`
-> does not already expose it, add a **restricted** block (never `allow { any; }`)
+> **TCP 953 is required** — a container can't reach the host's local rndc UNIX
+> socket. If your `named.conf` doesn't expose it, add a **restricted** block
+> (never `allow { any; }`):
 > ```
 > controls { inet 0.0.0.0 port 953 allow { 127.0.0.1; ::1; 172.16.0.0/12; } keys { "rndc-key"; }; };
 > ```
-> then restart named, e.g. `sudo systemctl restart named`. Also ensure the
-> mounted `/etc/bind` contains the matching `rndc.key`. The `172.16.0.0/12`
-> covers Docker bridge/compose subnetworks (the range Docker assigns); tighten
-> it to your exact subnet if you prefer.
+> then `sudo systemctl restart named`. Also make sure the mounted `/etc/bind`
+> contains the matching `rndc.key`. The `172.16.0.0/12` covers Docker's default
+> bridge/compose subnetworks — tighten it if you prefer.
 
-For the **Logs** tab, host BIND should also write a log file. Add to the host's
-`named.conf.options` (so the mounted `/var/log/bind` has content to tail):
+For the **Logs** tab, have the host BIND write a file so the mounted `/var/log/bind` has content to tail (`named.conf.options`):
 
 ```
 logging {
@@ -154,14 +187,44 @@ logging {
 };
 ```
 
-All web-UI container settings are configured via the `.env` file (see
-`.env.example`): `RNDC_HOST`, `RNDC_PORT`, `WEBUI_PORT`, `LOG_FILE`.
+### Option 3 — Manual / bare-metal (default)
+Everything on this one machine, managed as a systemd service. Web UI at `http://localhost:5000`.
 
-## Environment Variables
+```bash
+./install.sh     # choose 3) Manual
+```
+
+The installer detects your OS, installs BIND9 + Python deps if missing, prompts for the UI password, and installs the systemd unit. By hand:
+
+```bash
+sudo apt install bind9 bind9utils bind9-dnsutils python3-venv
+sudo rndc-confgen -a
+sudo chmod 640 /etc/bind/rndc.key && sudo chown root:bind /etc/bind/rndc.key
+sudo systemctl start named
+
+python3 -m venv venv
+./venv/bin/pip install -r requirements.txt
+
+WEBUI_PASSWORD='your-password' SECRET_KEY='a-long-random-string' ./venv/bin/python3 app.py
+```
+
+As a boot-starting service:
+
+```bash
+sudo cp bind9-webui.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now bind9-webui
+```
+
+---
+
+## Configuration
+
+All web-UI container settings live in `.env` (see `.env.example`); bare-metal uses environment variables or the systemd `EnvironmentFile`:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `BIND_CONF_DIR` | `/etc/bind` | Directory holding `named.conf*.local/.default-zones/options` |
+| `BIND_CONF_DIR` | `/etc/bind` | Directory with `named.conf*.local/.default-zones/options` |
 | `ZONE_DIR` | `$BIND_CONF_DIR` | Where zone data files (`db.<zone>`) are written |
 | `ZONE_OWNER` | *(empty)* | `user:group` to chown new zone files to (e.g. `bind:bind` in Docker) |
 | `RNDC_HOST` | *(empty → local socket)* | Hostname/IP of a remote `named` over TCP (e.g. `bind9`) |
@@ -171,69 +234,24 @@ All web-UI container settings are configured via the `.env` file (see
 | `WEBUI_PASSWORD` | *(empty = auth off)* | Single shared password required to use the UI |
 | `SECRET_KEY` | *(dev default)* | Secret used to sign the session cookie; set a random value |
 
-> **Access protection:** Set `WEBUI_PASSWORD` to require a password. The login
-> screen has a *Remember me* checkbox that persists the session for **30 minutes**
-> then auto-logs-out; without it the session ends when the browser closes. A
-> **Log out** button appears in the nav bar. If `WEBUI_PASSWORD` is empty,
-> authentication is disabled entirely.
+> **Access protection:** set `WEBUI_PASSWORD` to require a password at login. The
+> *Remember me* checkbox persists the session for **30 minutes** then auto-logs-out
+> (otherwise the session ends when the browser closes). A **Log out** button lives
+> in the nav bar. If the variable is empty, authentication is disabled entirely.
 
-## Manual Setup
+---
 
-```bash
-# Install dependencies
-sudo apt install bind9 bind9utils bind9-dnsutils python3-venv
+## Security notes
 
-# Fix rndc key permissions (if needed)
-sudo rndc-confgen -a
-sudo chmod 640 /etc/bind/rndc.key
-sudo chown root:bind /etc/bind/rndc.key
+- Authentication is a single shared password compared against the configured `WEBUI_PASSWORD` — nothing stored on disk, no user database.
+- Sessions use a signed cookie (set `SECRET_KEY`!), with **brute-force lockout** (5 failed logins → 15 min block) on the login form.
+- rndc control channel is locked to loopback + private Docker subnets when the installer configures TCP.
+- Restore writes go through the same validation gates BIND itself uses (`named-checkconf` / `named-checkzone`).
+- No build step, no runtime downloads, no telemetry, no analytics.
 
-# Ensure named is running
-sudo systemctl start named
+---
 
-# Set up Python venv
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
-
-# Run (password-protected; omit WEBUI_PASSWORD to disable auth)
-WEBUI_PASSWORD='your-password' SECRET_KEY='a-long-random-string' ./venv/bin/python3 app.py
-```
-
-## Systemd Service
-
-To run as a system service that starts on boot:
-
-```bash
-sudo cp bind9-webui.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now bind9-webui
-```
-
-## Project Structure
-
-```
-bind9-web-ui/
-├── app.py                  # Flask app — API routes + serves UI
-├── bind_manager.py         # rndc commands + zone/config file parsing
-├── templates/index.html    # Single-page dashboard
-├── static/style.css        # Dark/Light theme CSS
-├── static/app.js           # Vanilla JS (no build step)
-├── requirements.txt        # flask
-├── Dockerfile              # Container image for the web UI
-├── docker-compose.yml      # Web-UI only (manages host/remote BIND over TCP rndc)
-├── docker-compose-w-bind9.yml  # Full stack: BIND9 container + web UI
-├── .env.example            # Sample env for docker-compose.yml (web-UI only)
-├── docker/bind/            # Config/rndc.key shared with the BIND container
-│   ├── named.conf
-│   ├── named.conf.options
-│   ├── named.conf.local
-│   ├── named.conf.default-zones
-│   └── rndc.key
-├── install.sh              # One-shot bare-metal setup script
-└── bind9-webui.service     # Systemd unit file
-```
-
-## API Endpoints
+## API reference
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -251,25 +269,68 @@ bind9-web-ui/
 | GET | `/api/config/files` | List editable config files |
 | GET | `/api/config/file/<name>` | Read config file |
 | PUT | `/api/config/file/<name>` | Update config file |
-| GET | `/api/config/check` | Run named-checkconf |
-| GET | `/api/zone/<name>/check` | Run named-checkzone |
+| GET | `/api/config/check` | Run `named-checkconf` |
+| GET | `/api/zone/<name>/check` | Run `named-checkzone` |
 | GET | `/api/logs` | Query named logs |
 | POST | `/api/control/reload` | rndc reload |
 | POST | `/api/control/flush` | rndc flush |
 
-## How It Works
+---
 
-The web UI communicates with BIND9 through:
+## Development
 
-- **`rndc`** — for server control (reload, flush, stats, querylog); over the local UNIX socket on bare-metal, or over TCP 953 toward a container/remote BIND
-- **`/etc/bind/` config files** — read/write `named.conf.local`, zone files
-- **`named-checkconf` / `named-checkzone`** — for validation
-- **`journalctl` / a log file** — for log viewing (containers tail `LOG_FILE`)
+```bash
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
 
-The transport is chosen automatically from the environment: running as the
-systemd service it uses the local socket; in a container it uses `RNDC_HOST`
-over TCP. No database required. Just reads and writes the same files (or talks
-to the same control channel) that BIND9 uses.
+pytest                      # full suite (CI runs this too)
+```
+
+The suite covers zone create/edit/delete, config editing, backup/restore, dig,
+auth + lockout, and the add-zone wizard (preview + raw validation). CI runs on
+GitHub Actions for every push and PR.
+
+---
+
+## Project structure
+
+```
+bind9-web-ui/
+├── app.py                  # Flask app — API routes + serves UI
+├── bind_manager.py         # rndc commands + zone/config file parsing
+├── templates/index.html    # Single-page dashboard
+├── static/
+│   ├── style.css           # Dark/Light theme CSS
+│   └── app.js              # Vanilla JS (no build step)
+├── tests/                  # pytest suite
+├── requirements.txt        # flask
+├── Dockerfile              # Container image for the web UI
+├── docker-compose.yml      # Web-UI only (manages host/remote BIND over TCP rndc)
+├── docker-compose-w-bind9.yml  # Full stack: BIND9 container + web UI
+├── docker/bind/            # Config/rndc.key shared with the BIND container
+├── install.sh              # bootstrapping one-shot installer (--check safe)
+└── bind9-webui.service     # Systemd unit file
+```
+
+## How it works
+
+The UI talks to BIND through the exact same tools an admin does:
+
+- **`rndc`** — server control (reload, flush, stats, querylog); local UNIX socket on bare-metal, TCP 953 toward a container/remote BIND
+- **Config files** — reads/writes `named.conf.local`, zone files under `/etc/bind` (or `/etc/named`)
+- **`named-checkconf` / `named-checkzone`** — validation before writes land
+- **`journalctl` / log file** — log viewing (containers tail `LOG_FILE`)
+
+Transport is chosen from the environment: as a systemd service it uses the local
+socket; inside a container it uses `RNDC_HOST` over TCP. No database. No magic.
+
+---
+
+<div align="center">
+
+**Poke around, file an issue, open a PR — feedback welcome.**
+
+</div>
 
 ## License
 
