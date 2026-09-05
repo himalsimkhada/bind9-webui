@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed (Zones UI rework)
 
+- **Full-width layout** — removed the 1100px cap on `<main>` so every view fills the window.
+
 - **Master/detail layout** — the Zones tab is now a searchable, filterable list on the left (source/type badges, active highlight, sticky panel) with a records detail panel on the right. No more two crammed columns + a full-width table.
 - **Add Zone wizard** — "+ New Zone" opens a modal with two modes:
   - *Simple*: zone name, type, TTL, and checkbox presets for common records (NS + ns1, www, mail + MX, SPF TXT, ns2), with a **live zone-file preview** generated server-side.

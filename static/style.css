@@ -83,7 +83,7 @@ nav { display: flex; gap: 4px; }
 }
 .theme-toggle:hover { color: var(--text); border-color: var(--dim); }
 
-main { padding: 24px; max-width: 1100px; }
+main { padding: 24px; width: 100%; max-width: none; }
 
 .view { display: none; }
 .view.active { display: block; }
