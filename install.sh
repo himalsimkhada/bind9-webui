@@ -8,8 +8,11 @@
 #   3. Manual (all-host)   : BIND + web UI installed directly on this machine
 #
 # Usage:  sudo ./install.sh   (or: ./install.sh --check | --help)
+# One-liner:  curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
 
 set -euo pipefail
+
+REPO_URL="https://github.com/himalsimkhada/bind9-webui.git"
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
@@ -22,10 +25,39 @@ else
   C_RESET=""; C_GREEN=""; C_YELLOW=""; C_RED=""; C_BOLD=""
 fi
 
-info()  { printf '%s' "${C_BOLD}==>${C_RESET} $*\n"; }
+info()  { printf '%s\n' "${C_BOLD}==>${C_RESET} $*"; }
 ok()    { printf '%s%s%s\n' "${C_GREEN}    $*${C_RESET}"; }
 warn()  { printf '%s%s%s\n' "${C_YELLOW}!!  $*${C_RESET}"; }
 die()   { printf '%s%s%s\n' "${C_RED}FATAL:$*${C_RESET}" >&2; exit 1; }
+
+has_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+# ── Self-bootstrap ────────────────────────────────────────────────────────
+# Support one-liner installs (curl ... | bash): when the script is streamed
+# there is no repo checkout in $DIR, so fetch the repository first and then
+# re-run this installer from inside it (finishes with the user's chosen mode).
+
+if [ ! -f "$DIR/app.py" ] || [ ! -f "$DIR/docker-compose.yml" ]; then
+  echo "==> One-liner install: no repo checkout in \"$DIR\"."
+  has_cmd git || die "git is required for the one-liner install (curl | bash)."
+  has_cmd curl || has_cmd wget || warn "Neither curl nor wget found; check the URL you piped."
+
+  default_target="$HOME/bind9-webui"
+  target=""
+  read -r -p "Install the project into [$default_target]: " target
+  target="${target:-$default_target}"
+
+  mkdir -p "$(dirname "$target")"
+  if [ -d "$target" ] && [ -f "$target/app.py" ]; then
+    info "Updating existing checkout at $target"
+    (cd "$target" && git pull --ff-only) >/dev/null 2>&1 || true
+  else
+    info "Cloning $REPO_URL into $target"
+    git clone --quiet --depth 1 "$REPO_URL" "$target"
+  fi
+  cd "$target"
+  exec bash "$target/install.sh" "$@"
+fi
 
 # ── System detection ─────────────────────────────────────────────────────
 
@@ -81,8 +113,6 @@ rndc_key_path() {
 }
 
 named_service() { echo "named"; }
-
-has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 # ── Generic helpers ──────────────────────────────────────────────────────
 
@@ -223,11 +253,19 @@ ensure_docker() {
     else
       die "Unsupported distro for automatic Docker install. Install Docker manually."
     fi
-    sudo systemctl enable --now docker || true
   fi
-  docker compose version >/dev/null 2>&1 \
-    || die "Docker compose plugin is missing. Install docker-compose."
-  ok "Docker + compose plugin available"
+
+  if ! docker compose version >/dev/null 2>&1; then
+    die "Docker compose plugin is missing. Install docker-compose and re-run."
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    warn "Docker daemon is not reachable. Starting the docker service..."
+    sudo systemctl enable --now docker >/dev/null 2>&1 || true
+    sleep 2
+  fi
+  docker info >/dev/null 2>&1 \
+    || die "Docker daemon is not reachable. Start it (sudo systemctl start docker) and re-run."
+  ok "Docker + compose plugin available and the daemon is running"
 }
 
 ensure_host_bind() {

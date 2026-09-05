@@ -24,6 +24,36 @@ A lightweight web interface for managing BIND9 (named) DNS server. Runs on top o
 - `sudo` access (for rndc and named config files)
 - Docker is optional — only required for the containerized deployment.
 
+## Quick install (one-liner)
+
+The installer bootstraps itself: when run as `curl | bash` it clones this repo,
+then asks which of the three deployments you want. Docker modes are checked for
+the `docker` binary, the compose plugin, and a reachable daemon before anything
+else happens.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
+```
+
+Or clone and run it directly:
+
+```bash
+git clone https://github.com/himalsimkhada/bind9-webui.git
+cd bind9-webui
+./install.sh
+```
+
+Both take you to the same menu:
+
+```
+  1) Full Docker stack   - BIND9 and the web UI both in containers
+  2) Host BIND + Docker  - web UI container managing BIND installed on this machine
+  3) Manual              - BIND and the web UI both installed directly on this machine
+```
+
+Run `./install.sh --check` to see what it detects on your machine (distro, BIND
+config dir, log dir, rndc key, installed dependencies) without changing anything.
+
 ## Deployment Options
 
 The web UI is deliberately flexible and can run against **either** a bare-metal

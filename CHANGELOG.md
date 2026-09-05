@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   2. *Host BIND + Docker* — detects OS / BIND config dir (`/etc/bind` vs `/etc/named`), checks/installs BIND, generates the rndc key, adds the restricted TCP 953 `controls` block and a file logging channel to named, writes `.env`, then runs the web-UI-only compose file.
   3. *Manual* — all on the host: detects OS, installs BIND9 + Python deps if missing, sets up a venv, writes the UI password/secret to `/etc/bind9-webui.env`, and installs the systemd service.
   - `./install.sh --check` prints detected distro / bind dir / log dir / rndc key / dependency status without making changes.
+- **One-liner bootstrapping** — `curl -fsSL <raw>/main/install.sh | bash` now works: if the script detects no repo checkout (streamed), it clones the project into `~/bind9-webui` (or a chosen path) and re-runs itself from there, so `git clone` is no longer required.
+- **Docker preflight** — before either Docker mode starts, the installer verifies the `docker` binary, the compose plugin, AND that the daemon is reachable (`docker info`), starting the service on the way if needed; a hard error aborts if the daemon can't be started.
 - `docker-compose.yml` mount is now parameterized (`BIND_HOST_DIR`, `HOST_BIND_LOG_DIR`) so non-Debian distros work with the installer.
 - `bind9-webui.service` is a template (`__DIR__` placeholder) installed with the real path; reads credentials via `EnvironmentFile`.
 
