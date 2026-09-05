@@ -92,11 +92,9 @@ It deals only with the same config files and the same control channel real admin
 
 ## Looks like this
 
-Real screenshots (dark mode) of a running instance:
+Real screenshot (dark mode) of a running instance:
 
 ![Dashboard — live server status with stat boxes and rndc controls](screenshots/dashboard.png)
-
-![Zones — master/detail workspace with records panel](screenshots/zones.png)
 
 ---
 
