@@ -1,8 +1,9 @@
-# BIND9 Web UI — full stack: BIND9 name server + web UI container.
+# BIND9 Web UI — full stack: BIND9 name server + API backend container.
 #
 # Usage:
 #   docker compose -f docker-compose-w-bind9.yml up -d --build
-# Then open http://localhost:5000
+# The API is then available at http://localhost:5000; the UI lives in the
+# webui facade (himalsimkhada/webui).
 #
 # The web-UI container manages the BIND9 container over the rndc control
 # channel (TCP 953) and shares /etc/bind via host-mounted files + named

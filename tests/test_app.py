@@ -194,3 +194,50 @@ def test_zone_create_raw_invalid_body(client, monkeypatch):
     r = client.post("/api/zone", json={"name": "raw.example.com", "body": "garbage"})
     assert r.status_code == 400
     assert "Zone file invalid" in r.get_json()["error"]
+
+
+# ── API-only backend surface ─────────────────────────────────────────────
+
+def test_root_is_api_info(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["service"] == "bind9-webui"
+    assert body["api_only"] is True
+
+
+def test_no_html_pages(client):
+    # The UI was moved to the webui facade; the backend serves no HTML.
+    r = client.get("/login", follow_redirects=False)
+    assert r.status_code == 404
+
+
+def test_healthz_open(client):
+    r = client.get("/healthz")
+    assert r.status_code == 200
+    assert r.data == b"ok\n"
+
+
+def test_readyz_open(client):
+    r = client.get("/readyz")
+    assert r.status_code == 200
+    assert r.data == b"ok\n"
+
+
+def test_metrics_requires_auth(client):
+    r = client.get("/metrics")
+    assert r.status_code == 401
+
+
+def test_metrics_after_login(client):
+    _login(client)
+    r = client.get("/metrics")
+    assert r.status_code == 200
+    assert b"process_resident_memory_bytes" in r.data
+    assert b"http_requests_total" in r.data
+
+
+def test_metrics_open_when_auth_off(client):
+    a.WEBUI_PASSWORD = ""
+    r = client.get("/metrics")
+    assert r.status_code == 200

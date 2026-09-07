@@ -5,8 +5,9 @@ import time
 from collections import defaultdict
 from datetime import timedelta
 
-from flask import Flask, jsonify, request, render_template, session, send_file
+from flask import Flask, jsonify, request, session, send_file, Response
 import bind_manager as bm
+import metrics
 
 app = Flask(__name__)
 
@@ -78,22 +79,67 @@ def _valid_zone_name(name):
     return bool(_ZONE_NAME_RE.match(name)) and "." in name.rstrip(".")
 
 
+# Health/readiness and the API-info root live outside the auth gate.
+OPEN_PATHS = ("/healthz", "/readyz", "/")
+
+
+@app.before_request
+def record_metrics():
+    metrics.record_request_started()
+
+
+@app.after_request
+def record_status(response):
+    metrics.record_request_finished(response.status_code)
+    return response
+
+
 @app.before_request
 def protect_endpoints():
+    # Let unmatched routes fall through to Flask's 404, not the auth gate.
+    if request.url_rule is None:
+        return None
     # Only enforce when a password is configured.
     if not WEBUI_PASSWORD:
         return None
-    # Allow the auth endpoints and static assets.
-    if request.endpoint in ("index", "static", "api_login", "api_session"):
+    if request.path in OPEN_PATHS:
         return None
-    if request.path.startswith("/api/") and not is_authenticated():
+    # Allow the auth endpoints only.
+    if request.endpoint in ("api_login", "api_session"):
+        return None
+    if not is_authenticated():
         return _err("Unauthorized", code=401)
     return None
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return jsonify({
+        "service": "bind9-webui",
+        "api_only": True,
+        "auth_required": bool(WEBUI_PASSWORD),
+        "hint": "This is the API backend. Manage BIND9 from the webui facade.",
+    })
+
+
+# ── Probes & metrics ─────────────────────────────────────────────────────
+
+@app.route("/healthz")
+def healthz():
+    return Response("ok\n", mimetype="text/plain")
+
+
+@app.route("/readyz")
+def readyz():
+    if metrics.ready():
+        return Response("ok\n", mimetype="text/plain")
+    return Response("not ready\n", mimetype="text/plain", status=503)
+
+
+@app.route("/metrics")
+def api_metrics():
+    return Response(metrics.metrics_text(),
+                    mimetype="text/plain; version=0.0.4; charset=utf-8")
 
 
 # ── Authentication ──────────────────────────────────────────────────────────

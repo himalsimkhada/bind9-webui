@@ -1,33 +1,30 @@
 <div align="center">
 
 ```
- /$$       /$$                 /$$  /$$$$$$                                  /$$                 /$$
-| $$      |__/                | $$ /$$__  $$                                | $$                |__/
-| $$$$$$$  /$$ /$$$$$$$   /$$$$$$$| $$  \ $$         /$$  /$$  /$$  /$$$$$$ | $$$$$$$  /$$   /$$ /$$
-| $$__  $$| $$| $$__  $$ /$$__  $$|  $$$$$$$ /$$$$$$| $$ | $$ | $$ /$$__  $$| $$__  $$| $$  | $$| $$
-| $$  \ $$| $$| $$  \ $$| $$  | $$ \____  $$|______/| $$ | $$ | $$| $$$$$$$$| $$  \ $$| $$  | $$| $$
-| $$  | $$| $$| $$  | $$| $$  | $$ /$$  \ $$        | $$ | $$ | $$| $$_____/| $$  | $$| $$  | $$| $$
-| $$$$$$$/| $$| $$  | $$|  $$$$$$$|  $$$$$$/        |  $$$$$/$$$$/|  $$$$$$$| $$$$$$$/|  $$$$$$/| $$
-|_______/ |__/|__/  |__/ \_______/ \______/          \_____/\___/  \_______/|_______/  \______/ |__/
-                                                                                                    
-                                                                                                    
-                                                                                                    
+ _     _           _  ___                    _           _
+| |__ (_)_ __   __| |/ _ \     __      _____| |__  _   _(_)
+| '_ \| | '_ \ / _` | (_) |____\ \ /\ / / _ \ '_ \| | | | |
+| |_) | | | | | (_| |\__, |_____\ V  V /  __/ |_) | |_| | |
+|_.__/|_|_| |_|\__,_|  /_/       \_/\_/ \___|_.__/ \__,_|_|
 ```
 
-### Control your BIND9 server from a modern web UI
+### The API backend that powers your BIND9 management dashboard
 
-**A lightweight, dependency-free web interface** that manages BIND9 (`named`) exactly like you do from the shell — zero rebuilding, zero reconfiguration, no database, ~32 MB RAM.
+**A lightweight, dependency-free API service** that manages BIND9 (`named`) exactly like you do from the shell — zero rebuilding, zero reconfiguration, no database, ~32 MB RAM.
 
 <!-- badges (static, no network lookups) -->
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![BIND9](https://img.shields.io/badge/BIND9-9.10+-9A3324?logo=processingfoundation&logoColor=white)
-![Stack](https://img.shields.io/badge/Flask-Docker-Vanilla%20JS-green)
+![Stack](https://img.shields.io/badge/Flask-Docker-Vanilla%20API-green)
 ![Docker](https://img.shields.io/badge/Docker-24273D?logo=docker&logoColor=white)
-![Style](https://img.shields.io/badge/dark%20%2F%20light-mode-blueviolet)
+![API](https://img.shields.io/badge/API-only-yellow)
 ![maintained](https://img.shields.io/badge/maintained-yes-2ea44f)
 ![PRs](https://img.shields.io/badge/PRs-welcome-2ea44f)
 
-One command install, or run it from a container. Works with bare-metal BIND, a BIND container, or a remote `named` over rndc.
+This repo is the **API backend**. The user interface lives in the companion
+facade [himalsimkhada/webui](https://github.com/himalsimkhada/webui), which
+logs in to this service and proxies its dashboard to the browser. Point the
+facade at `bind=http://…:5000` and you get the full BIND9 admin UI.
 
 </div>
 
@@ -49,10 +46,9 @@ curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/inst
 
 ## Table of Contents
 
-- [Why bind9-webui?](#why-bind9-webui)
+- [Why a BIND9 backend?](#why-a-bind9-backend)
 - [Features](#features)
-- [Look & feel](#looks-like-this)
-- [Install & quick start](#quick-start)
+- [Quick start](#quick-start)
 - [Requirements](#requirements)
 - [Deployment options](#deployment-options)
   - [1. Full Docker stack](#option-1--full-docker-stack)
@@ -68,11 +64,17 @@ curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/inst
 
 ---
 
-## Why bind9-webui?
+## Why a BIND9 backend?
 
-Managing BIND9 normally means SSH-ing in, remembering `rndc` incantations, and hand-editing zone files that are easy to get wrong. This project gives you a polished, single-page dashboard for the daily DNS chores — while **touching nothing** about how BIND runs underneath.
+BIND9 administration normally means SSH-ing in, remembering `rndc` incantations,
+and hand-editing zone files that are easy to get wrong. This project turns those
+operations into a **clean HTTP API** — while **touching nothing** about how
+BIND runs underneath.
 
-It deals only with the same config files and the same control channel real admins use (`rndc`, `named-checkconf`, `named-checkzone`). Your DNS setup stays yours; the UI just makes it pleasant.
+It deals only with the same config files and the same control channel real
+admins use (`rndc`, `named-checkconf`, `named-checkzone`). The API serves JSON,
+auth-protected with the same shared password the facade uses. Your DNS setup
+stays yours; the dashboard just makes it pleasant.
 
 ---
 
@@ -80,27 +82,21 @@ It deals only with the same config files and the same control channel real admin
 
 | | |
 |---|---|
-| **Dashboard** | Live server state with stat boxes and the real `rndc` controls — reload, flush, stats, and querylog toggle. |
-| **Zone management** | Master/detail workspace: searchable zone list, records panel, and a guided **Add Zone wizard** with a *Simple* tab (name, type, TTL, common-record presets, live zone-file preview) and an *Advanced* tab for pasting a raw zone file that gets validated with `named-checkzone`. |
-| **Edit zones** | Add/remove records, open the raw zone file, `named-checkzone` it, delete it — all from the detail panel. |
-| **Zone source control** | Move zones between `named.conf.local` and `named.conf.default-zones` in one click, with a protected flag for built-in system zones and the real filesystem path on display. |
-| **Host Mapper** | Built into the Zones tab: paste `IP host1 host2 …` lines to bulk-create A records across existing zones, with duplicate and missing-zone reporting. |
-| **Config editor** | Edit `named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones` with full comment preservation. |
-| **Backup & restore** | One-click download of all config + zones (+ rndc key) as a gzipped tarball; validated restore with a hard config gate and zone issues downgraded to warnings. |
-| **DNS lookup (Dig)** | Run `dig` from the browser against the managed BIND. |
-| **Log viewer** | Tail BIND logs with line-count control and text filtering. |
+| **Server status** | `/api/status` raw `rndc status` plus `/api/status/structured` (parsed key-values: version, zones, workers, boot time, query logging). |
+| **Zone management** | List, create, detail (records + SOA + raw file), edit records, raw zone-file save, delete — full CRUD API. |
+| **Add-zone validation** | `/api/zone/preview` builds a zone file client-side (Simple wizard) and `/api/zone` validates raw bodies with `named-checkzone` before writing. |
+| **Record operations** | Add single records, delete by index, or bulk-update a zone's records. |
+| **Host Mapper** | `/api/map-hosts` turns `IP host1 host2 …` lines into A records across matching zones, with duplicate / missing-zone reporting. |
+| **Source control** | Move zones (`/api/zone/<name>/source`) between `named.conf.local` and `named.conf.default-zones`; the API respects the protected flag on built-in system zones. |
+| **Config editor** | Read/write `named.conf`, `named.conf.options`, `named.conf.local`, `named.conf.default-zones` with full comment preservation. |
 | **Validation** | `named-checkconf` / `named-checkzone` on demand, before and after edits. |
-| **Access protection** | Shared password (`WEBUI_PASSWORD`), 30-minute *remember me* session auto-logout, log-out button, and brute-force lockout (5 failures → 15 min block). |
-| **Dark & light mode** | Theme toggle, persisted in the browser. |
-| **Feather-light** | Flask + vanilla HTML/CSS/JS. No build step, no Node.js, no database — ~32 MB RAM. |
-
----
-
-## Looks like this
-
-Real screenshot (dark mode) of a running instance:
-
-![Dashboard — live server status with stat boxes and rndc controls](screenshots/dashboard.png)
+| **Backup & restore** | Gzipped tarball of all config + zones (+ rndc key); validated restore with a hard config gate and zone issues downgraded to warnings. |
+| **DNS lookup (Dig)** | `dig` from the API against the managed BIND. |
+| **Log viewer** | BIND log tail with line-count control and text filtering. |
+| **rndc controls** | `reload`, `flush`, `stats`, `querylog` toggle. |
+| **Probes & metrics** | `/healthz`, `/readyz` for the facade's health checks and `/metrics` (Prometheus text) for the dashboard metrics tiles. |
+| **Access protection** | Shared password (`WEBUI_PASSWORD`) with session cookie, *remember me* (30 min auto-logout), and brute-force lockout (5 failures → 15 min block). |
+| **Feather-light** | Flask + stdlib tools. No build step, no Node.js, no database — ~32 MB RAM. |
 
 ---
 
@@ -120,13 +116,17 @@ cd bind9-webui
 ./install.sh
 ```
 
-You'll be asked which of three deployments you want:
+You'll be asked which deployment you want:
 
 ```
-  1) Full Docker stack   - BIND9 and the web UI both in containers
-  2) Host BIND + Docker  - web UI container managing BIND on this machine
-  3) Manual              - BIND and the web UI both directly on this machine
+  1) Full Docker stack   - BIND9 and the API both in containers
+  2) Host BIND + Docker  - API container managing BIND on this machine
+  3) Manual              - BIND and the API both directly on this machine
 ```
+
+The API ends up on **port 5000**. To get the dashboard, point the
+[webui facade](https://github.com/himalsimkhada/webui) at
+`bind=http://<this-host>:5000` and open the facade (default `http://localhost:8080`).
 
 > **Dry run first:** `./install.sh --check` reports what the installer detects
 > on your machine (distro, BIND config dir, log dir, rndc key, installed
@@ -137,7 +137,7 @@ You'll be asked which of three deployments you want:
 ## Requirements
 
 - Linux with BIND9 installed (`apt install bind9 bind9-dnsutils`)
-- Python 3.10+
+- Python 3.10+ (manual mode only)
 - `sudo` access (for `rndc` and named config files)
 - Docker is **optional** — needed only for the containerized deployments
 
@@ -147,20 +147,21 @@ Supported distros: Debian/Ubuntu (apt), RHEL/Fedora (dnf), Arch (pacman).
 
 ## Deployment options
 
-The web UI runs against **either** a bare-metal BIND or an Ubuntu BIND container, **without code changes** — it talks to `named` through whichever transport you configure:
+The API runs against **either** a bare-metal BIND or an Ubuntu BIND container,
+**without code changes** — it talks to `named` through whichever transport you configure:
 
 - **Local (bare-metal):** `rndc` over the local UNIX control socket, reading/writing `/etc/bind/`.
 - **Remote (container or host over network):** `rndc` over TCP 953 with a shared `rndc.key`.
 
 | Option | What runs where | When to pick it |
 |---|---|---|
-| **1. Full Docker stack** | BIND9 + web UI, two containers | You want zero DNS tooling on the host |
-| **2. Host BIND + Docker** | Web UI in a container, BIND on the host | You keep your existing BIND, UI stays containerized |
+| **1. Full Docker stack** | BIND9 + API, two containers | You want zero DNS tooling on the host |
+| **2. Host BIND + Docker** | API in a container, BIND on the host | You keep your existing BIND, backend stays containerized |
 | **3. Manual** | Everything on this machine, systemd service | Minimal footprint, single server |
 
 ### Option 1 — Full Docker stack
 
-Two containers, one command: the official `ubuntu/bind9` image (port 53 UDP/TCP + TCP 953 for rndc) and this project's web UI (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the UI drives BIND over `rndc -s bind9 -p 953`.
+Two containers, one command: the official `ubuntu/bind9` image (port 53 UDP/TCP + TCP 953 for rndc) and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
 
 ```bash
 docker compose -f docker-compose-w-bind9.yml up -d --build
@@ -173,7 +174,7 @@ docker compose -f docker-compose-w-bind9.yml up -d --build
 > ```
 
 ### Option 2 — Host BIND + Docker
-Run only the web-UI image and point it at BIND that already runs on the host (or elsewhere). The compose file mounts the host's `/etc/bind` into the container and manages `named` over the rndc TCP channel:
+Run only the API image and point it at BIND that already runs on the host (or elsewhere). The compose file mounts the host's `/etc/bind` into the container and manages `named` over the rndc TCP channel:
 
 ```bash
 ./install.sh     # choose 2) Host BIND + Docker
@@ -198,7 +199,7 @@ The compose file adds `extra_hosts: host.docker.internal → host-gateway`, so t
 > contains the matching `rndc.key`. The `172.16.0.0/12` covers Docker's default
 > bridge/compose subnetworks — tighten it if you prefer.
 
-For the **Logs** tab, have the host BIND write a file so the mounted `/var/log/bind` has content to tail (`named.conf.options`):
+For the **Logs** tab to have content, have the host BIND write a file so the mounted `/var/log/bind` has a log to tail (`named.conf.options`):
 
 ```
 logging {
@@ -209,7 +210,7 @@ logging {
 ```
 
 ### Option 3 — Manual (bare-metal)
-Everything on this one machine, managed as a systemd service. Web UI at `http://localhost:5000`.
+Everything on this one machine, managed as a systemd service. API at `http://localhost:5000`.
 
 ```bash
 ./install.sh     # choose 3) Manual
@@ -241,7 +242,7 @@ sudo systemctl enable --now bind9-webui
 
 ## Configuration
 
-All web-UI container settings live in `.env` (see `.env.example`); bare-metal uses environment variables or the systemd `EnvironmentFile`:
+All container settings live in `.env` (see `.env.example`); bare-metal uses environment variables or the systemd `EnvironmentFile`:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -252,22 +253,24 @@ All web-UI container settings live in `.env` (see `.env.example`); bare-metal us
 | `RNDC_PORT` | `953` | rndc TCP port when `RNDC_HOST` is set |
 | `RNDC_KEY` | `$BIND_CONF_DIR/rndc.key` | rndc key file path |
 | `LOG_FILE` | *(auto)* | Path to a BIND log file to tail (containers) instead of `journalctl` |
-| `WEBUI_PASSWORD` | *(empty = auth off)* | Single shared password required to use the UI |
+| `WEBUI_PASSWORD` | *(empty = auth off)* | Shared password. **The webui facade must use the same value** so it can log in automatically. |
 | `SECRET_KEY` | *(dev default)* | Secret used to sign the session cookie; set a random value |
+| `SERVICE_NAME` | `bind9-webui` | Label on exported metrics |
 
-> **Access protection:** set `WEBUI_PASSWORD` to require a password at login. The
-> *Remember me* checkbox persists the session for **30 minutes** then auto-logs-out
-> (otherwise the session ends when the browser closes). A **Log out** button lives
-> in the nav bar. If the variable is empty, authentication is disabled entirely.
+> **Access protection:** set `WEBUI_PASSWORD` to require a password. The facade
+> calls `/api/login` with this shared password on its own session and retries
+> once on a 401, so you never type the password in the browser twice. If the
+> variable is empty, authentication is disabled entirely.
 
 ---
 
 ## Security notes
 
 - Authentication is a single shared password compared against the configured `WEBUI_PASSWORD` — nothing stored on disk, no user database.
-- Sessions use a signed cookie (set `SECRET_KEY`!), with **brute-force lockout** (5 failed logins → 15 min block) on the login form.
+- Sessions use a signed cookie (set `SECRET_KEY`!), with **brute-force lockout** (5 failed logins → 15 min block).
 - rndc control channel is locked to loopback + private Docker subnets when the installer configures TCP.
 - Restore writes go through the same validation gates BIND itself uses (`named-checkconf` / `named-checkzone`).
+- `/healthz` and `/readyz` are open (probes); `/metrics` and every `/api/*` endpoint require auth when a password is set.
 - No build step, no runtime downloads, no telemetry, no analytics.
 
 ---
@@ -276,25 +279,37 @@ All web-UI container settings live in `.env` (see `.env.example`); bare-metal us
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| POST | `/api/login` | Login with the shared password |
+| GET | `/api/session` | Auth state |
+| POST | `/api/logout` | Log out |
 | GET | `/api/status` | BIND9 server status (raw) |
 | GET | `/api/status/structured` | Server status (parsed key-value) |
 | GET | `/api/zones` | List all zones |
 | GET | `/api/zone/<name>` | Zone detail + records + path + source |
-| POST | `/api/zone` | Create zone |
+| POST | `/api/zone` | Create zone (simple records or raw validated body) |
+| POST | `/api/zone/preview` | Build a zone file for the wizard preview |
 | DELETE | `/api/zone/<name>` | Delete zone |
 | PUT | `/api/zone/<name>/file` | Update raw zone file |
-| POST | `/api/zone/<name>/source` | Move zone between config files |
-| POST | `/api/map-hosts` | Bulk-create A records from `IP host...` lines |
+| PUT | `/api/zone/<name>/records` | Bulk-update records |
 | POST | `/api/zone/<name>/record` | Add record |
 | DELETE | `/api/zone/<name>/record/<idx>` | Remove record |
+| POST | `/api/zone/<name>/source` | Move zone between config files |
+| POST | `/api/map-hosts` | Bulk-create A records from `IP host...` lines |
 | GET | `/api/config/files` | List editable config files |
 | GET | `/api/config/file/<name>` | Read config file |
 | PUT | `/api/config/file/<name>` | Update config file |
 | GET | `/api/config/check` | Run `named-checkconf` |
 | GET | `/api/zone/<name>/check` | Run `named-checkzone` |
 | GET | `/api/logs` | Query named logs |
+| GET | `/api/backup` | Download config+zone tarball (gzip) |
+| POST | `/api/restore` | Upload + validated restore |
+| POST | `/api/dig` | Look up a name (`q`, `type`, `server`) |
 | POST | `/api/control/reload` | rndc reload |
 | POST | `/api/control/flush` | rndc flush |
+| POST | `/api/control/stats` | rndc stats |
+| POST | `/api/control/querylog` | Toggle query logging |
+| GET | `/healthz` `/readyz` | Probes (open) |
+| GET | `/metrics` | Prometheus metrics (auth-gated) |
 
 ---
 
@@ -304,30 +319,27 @@ All web-UI container settings live in `.env` (see `.env.example`); bare-metal us
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
 
-pytest                      # full suite (CI runs this too)
+pytest                      # full suite, no BIND required (rndc binary faked)
 ```
 
-The suite covers zone create/edit/delete, config editing, backup/restore, dig,
-auth + lockout, and the add-zone wizard (preview + raw validation). CI runs on
-GitHub Actions for every push and PR.
+The suite covers auth + lockout, backup/restore, dig, the add-zone wizard
+(preview + raw validation), config file CRUD, and the metrics/health probes.
+CI runs on GitHub Actions for every push and PR.
 
 ---
 
 ## Project structure
 
 ```
-bind9-web-ui/
-├── app.py                  # Flask app — API routes + serves UI
+bind9-webui/
+├── app.py                  # Flask API — routes + auth + probes (no HTML)
 ├── bind_manager.py         # rndc commands + zone/config file parsing
-├── templates/index.html    # Single-page dashboard
-├── static/
-│   ├── style.css           # Dark/Light theme CSS
-│   └── app.js              # Vanilla JS (no build step)
+├── metrics.py              # /healthz, /readyz, /metrics (Prometheus text)
 ├── tests/                  # pytest suite
 ├── requirements.txt        # flask
-├── Dockerfile              # Container image for the web UI
-├── docker-compose.yml      # Web-UI only (manages host/remote BIND over TCP rndc)
-├── docker-compose-w-bind9.yml  # Full stack: BIND9 container + web UI
+├── Dockerfile              # Container image (API only)
+├── docker-compose.yml      # API container managing host/remote BIND over TCP rndc
+├── docker-compose-w-bind9.yml  # Full stack: BIND9 container + API
 ├── docker/bind/            # Config/rndc.key shared with the BIND container
 ├── install.sh              # bootstrapping one-shot installer (--check safe)
 └── bind9-webui.service     # Systemd unit file
@@ -335,15 +347,18 @@ bind9-web-ui/
 
 ## How it works
 
-The UI talks to BIND through the exact same tools an admin does:
+The API talks to BIND through the exact same tools an admin does:
 
-- **`rndc`** — server control (reload, flush, stats, querylog); local UNIX socket on bare-metal, TCP 953 toward a container/remote BIND
+- **`rndc`** — server control (status, reload, flush, stats, querylog); local UNIX socket on bare-metal, TCP 953 toward a container/remote BIND
 - **Config files** — reads/writes `named.conf.local`, zone files under `/etc/bind` (or `/etc/named`)
 - **`named-checkconf` / `named-checkzone`** — validation before writes land
 - **`journalctl` / log file** — log viewing (containers tail `LOG_FILE`)
 
 Transport is chosen from the environment: as a systemd service it uses the local
 socket; inside a container it uses `RNDC_HOST` over TCP. No database. No magic.
+The **[webui facade](https://github.com/himalsimkhada/webui)** holds the session
+with this API (shared `WEBUI_PASSWORD`), proxies every dashboard call, and
+renders the BIND9 management UI in the browser.
 
 ---
 

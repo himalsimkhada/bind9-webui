@@ -1,6 +1,6 @@
-# BIND9 Web UI — web-UI container ONLY.
+# BIND9 Web UI — API backend container ONLY.
 #
-# This runs just the web UI and manages an EXISTING BIND9 server that lives
+# This runs just the API and manages an EXISTING BIND9 server that lives
 # OUTSIDE the container (the host, or a remote machine) over the rndc TCP
 # control channel. It mounts the host's /etc/bind so it can read/write the
 # same config and zone files that `named` uses.
@@ -16,7 +16,8 @@
 #
 # Usage:
 #   docker compose up -d --build
-# Then open http://localhost:5000
+# The API is then available at http://localhost:5000. The user interface lives
+# in the webui facade (himalsimkhada/webui), which proxies to this backend.
 
 services:
   webui:

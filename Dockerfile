@@ -1,8 +1,10 @@
-# BIND9 Web UI — container image (controls a local or remote `named`)
+# BIND9 Web UI — API backend only. The UI lives in the webui facade,
+# which proxies /api-module/bind/... here over HTTP.
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
+    SERVICE_NAME=bind9-webui \
     BIND_CONF_DIR=/etc/bind \
     RNDC_PORT=953
 
@@ -19,11 +21,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py bind_manager.py ./
-COPY templates ./templates
-COPY static ./static
+COPY app.py bind_manager.py metrics.py ./
 
-# The UI must write /etc/bind and run rndc, so run as root inside the container.
+# The API must write /etc/bind and run rndc, so run as root inside the container.
 # Point it at named with RNDC_HOST / mount /etc/bind when using the compose stack.
 EXPOSE 5000
 

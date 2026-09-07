@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 #
-# BIND9 Web UI — interactive installer.
+# BIND9 Web UI — API backend installer.
+#
+# This service is the API-only backend; the user interface lives in the
+# companion webui facade (himalsimkhada/webui), which proxies to it.
 #
 # Offers three deployment modes:
-#   1. Full Docker stack   : BIND9 container + web UI container
-#   2. Host BIND + Docker  : manage an existing HOST BIND with the web-UI container
-#   3. Manual (all-host)   : BIND + web UI installed directly on this machine
+#   1. Full Docker stack   : BIND9 container + API container
+#   2. Host BIND + Docker  : manage an existing HOST BIND with the API container
+#   3. Manual (all-host)   : BIND + API installed directly on this machine
 #
 # Usage:  sudo ./install.sh   (or: ./install.sh --check | --help)
 # One-liner:  curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
@@ -299,22 +302,22 @@ ensure_python_tools() {
 # ── Mode 1: Full Docker stack ────────────────────────────────────────────
 
 mode_docker_full() {
-  info "Mode 1: Full Docker stack (BIND9 + web UI containers)"
+  info "Mode 1: Full Docker stack (BIND9 + API containers)"
   ensure_docker
   ask_password
   write_env_file <<EOF
 WEBUI_PASSWORD=$WEBUI_PASSWORD
 SECRET_KEY=$SECRET_KEY
 EOF
-  info "Starting containers (this builds the web UI image on first run)"
+  info "Starting containers (this builds the API image on first run)"
   docker compose -f docker-compose-w-bind9.yml up -d --build
-  ok "Deployed. Open http://localhost:5000"
+  ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
 }
 
-# ── Mode 2: Host BIND + Docker web UI ────────────────────────────────────
+# ── Mode 2: Host BIND + Docker API ────────────────────────────────────────
 
 mode_host_bind_docker() {
-  info "Mode 2: Host BIND9 + web UI container"
+  info "Mode 2: Host BIND9 + API container"
   ensure_docker
   ensure_host_bind
   ensure_named_running
@@ -335,9 +338,9 @@ WEBUI_PASSWORD=$WEBUI_PASSWORD
 SECRET_KEY=$SECRET_KEY
 EOF
 
-  info "Starting the web UI container (builds the image on first run)"
+  info "Starting the API container (builds the image on first run)"
   docker compose -f docker-compose.yml up -d --build
-  ok "Deployed. Open http://localhost:5000"
+  ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
   ok "Mounted host BIND config from: $bdir"
   ok "Tailing logs from:             $ldir/named.log"
 }
@@ -345,7 +348,7 @@ EOF
 # ── Mode 3: Manual (all on host) ─────────────────────────────────────────
 
 mode_manual() {
-  info "Mode 3: Manual install (BIND + web UI on this machine)"
+  info "Mode 3: Manual install (BIND + API on this machine)"
   ensure_host_bind
   ensure_named_running
   add_logging_channel
@@ -368,7 +371,7 @@ EOF
   info "Installing systemd service"
   {
     echo "[Unit]"
-    echo "Description=BIND9 Web UI"
+    echo "Description=BIND9 Web UI (API backend)"
     echo "After=network.target named.service"
     echo "Requires=named.service"
     echo ""
@@ -388,7 +391,7 @@ EOF
   sudo systemctl daemon-reload
   sudo systemctl enable bind9-webui
   sudo systemctl restart bind9-webui
-  ok "Deployed. Open http://localhost:5000"
+  ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
   ok "Manage with: sudo systemctl status bind9-webui"
 }
 
@@ -396,11 +399,11 @@ EOF
 
 show_menu() {
   echo ""
-  echo "Select how you want to run the BIND9 Web UI:"
+  echo "Select how you want to run the BIND9 backend:"
   echo ""
-  echo "  1) Full Docker stack   - BIND9 and the web UI both in containers"
-  echo "  2) Host BIND + Docker  - web UI container managing BIND installed on this machine"
-  echo "  3) Manual              - BIND and the web UI both installed directly on this machine"
+  echo "  1) Full Docker stack   - BIND9 and the API both in containers"
+  echo "  2) Host BIND + Docker  - API container managing BIND installed on this machine"
+  echo "  3) Manual              - BIND and the API both installed directly on this machine"
   echo ""
   while :; do
     read -r -p "Enter your choice [1-3]: " choice

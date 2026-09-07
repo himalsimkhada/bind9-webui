@@ -1,5 +1,5 @@
 [Unit]
-Description=BIND9 Web UI
+Description=BIND9 Web UI (API backend)
 After=network.target named.service
 Requires=named.service
 
