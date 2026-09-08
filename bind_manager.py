@@ -753,10 +753,13 @@ def restore_backup(data):
 # ── Dig ─────────────────────────────────────────────────────────────────────
 
 def dig(query, rtype="A", server=None):
-    server = (server or "").strip() or os.environ.get("RNDC_HOST", "127.0.0.1").strip() or "127.0.0.1"
-    if not re.match(r'^[A-Za-z0-9.:_-]+$', server):
-        raise RuntimeError("Invalid nameserver")
-    cmd = f"{_sudo()}dig @{server} {shlex.quote(query)} {shlex.quote(rtype)} +time=3 +tries=1 +nocmd +nostats"
+    server = (server or "").strip()
+    at_flag = ""
+    if server:
+        if not re.match(r'^[A-Za-z0-9.:_-]+$', server):
+            raise RuntimeError("Invalid nameserver")
+        at_flag = f"@{server} "
+    cmd = f"{_sudo()}dig {at_flag}{shlex.quote(query)} {shlex.quote(rtype)} +time=3 +tries=1 +nocmd +nostats"
     out, err, rc = _run(cmd, check=False)
     return {
         "query": query,

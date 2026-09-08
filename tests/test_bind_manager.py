@@ -188,3 +188,22 @@ def test_restore_rejects_tarball_without_named_conf(monkeypatch, tmp_path):
     bad = _make_tarball({"random.txt": "hi"})
     with pytest.raises(RuntimeError, match="does not contain a named.conf"):
         bm.restore_backup(bad)
+
+
+def test_dig_no_server_omits_at_flag(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(bm, "_run", lambda cmd, check=False: captured.__setitem__("cmd", cmd) or ("answer", "", 0))
+    monkeypatch.setattr(bm, "_sudo", lambda: "")
+    out = bm.dig("example.com", "MX")
+    assert "@" not in captured["cmd"]
+    assert "example.com" in captured["cmd"]
+    assert out["server"] == ""
+    assert out["output"] == "answer"
+
+
+def test_dig_with_server_uses_at_flag(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(bm, "_run", lambda cmd, check=False: captured.__setitem__("cmd", cmd) or ("answer", "", 0))
+    monkeypatch.setattr(bm, "_sudo", lambda: "")
+    bm.dig("example.com", "A", "8.8.8.8")
+    assert "dig @8.8.8.8 example.com A " in captured["cmd"]
