@@ -48,7 +48,7 @@ has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 read_input() {
   local var="$1" prompt="${2:-}"
-  if [ -e /dev/tty ]; then
+  if ( exec </dev/tty ) 2>/dev/null; then
     read -r -p "$prompt" "$var" < /dev/tty
   else
     read -r -p "$prompt" "$var"
@@ -57,7 +57,7 @@ read_input() {
 
 read_input_silent() {
   local var="$1" prompt="${2:-}"
-  if [ -e /dev/tty ]; then
+  if ( exec </dev/tty ) 2>/dev/null; then
     read -r -s -p "$prompt" "$var" < /dev/tty
   else
     read -r -s -p "$prompt" "$var"
