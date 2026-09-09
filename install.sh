@@ -193,6 +193,7 @@ random_secret() {
 ask_password() {
   # Accepts WEBUI_PASSWORD from the environment (headless runs) or prompts.
   if [ -z "${WEBUI_PASSWORD:-}" ]; then
+    WEBUI_PASSWORD=""
     while [ -z "$WEBUI_PASSWORD" ]; do
       read_input_silent WEBUI_PASSWORD "    Web UI password (used to log in): "
       if [ -z "$WEBUI_PASSWORD" ]; then
