@@ -66,7 +66,7 @@ read_input() {
     return 0
   fi
   if [ "$var" = "target" ]; then
-    printf -v "$var" '%s' "$PWD"   # headless default: install in the current dir
+    printf -v "$var" '%s' "$PWD/bind9-webui"   # headless default: ./bind9-webui subdir
     return 0
   fi
   die "No terminal available and \$$var was not set (${prompt%:}). Re-run from a terminal or set the env var."
@@ -92,7 +92,7 @@ if [ ! -f "$DIR/docker-compose.yml" ] && [ ! -f "$DIR/docker-compose-w-bind9.yml
   has_cmd curl || has_cmd wget || die "curl or wget is required for the one-liner install."
   has_cmd git || warn "git is not installed — only the files needed by the installer will be fetched."
 
-  default_target="$PWD"
+  default_target="$PWD/bind9-webui"
   target=""
   read_input target "Install the project into [$default_target]: "
   target="${target:-$default_target}"

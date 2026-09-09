@@ -65,3 +65,4 @@ volumes:
   bind9-vol:
     name: bind9-vol   # fixed name: install.sh seeds it from docker/bind once
   bind-logs:
+    name: bind-logs   # fixed name: named logs carry across project dirs

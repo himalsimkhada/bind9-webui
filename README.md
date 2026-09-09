@@ -38,9 +38,10 @@ facade at `bind=http://…:5000` and you get the full BIND9 admin UI.
 
 ## Install — one line
 
-Copy-paste this. No cloning, no setup — the installer keeps the project in the
-directory you run it from, fetches the compose file (saved as
-`docker-compose.yml`) for the deployment you pick, then deploys:
+Copy-paste this. No cloning, no setup — the installer creates a `bind9-webui`
+directory under the directory you run it from (project lives at
+`./bind9-webui`), fetches the compose file (saved as `docker-compose.yml`) for
+the deployment you pick, then deploys:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
