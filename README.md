@@ -172,7 +172,7 @@ The API runs against **either** a bare-metal BIND or an Ubuntu BIND container,
 
 ### Option 1 — Full Docker stack
 
-Two containers, one command: the official `ubuntu/bind9` image (port 53 UDP/TCP + TCP 953 for rndc) and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
+Two containers, one command: the official `internetsystemsconsortium/bind9` image (port 53 UDP/TCP + TCP 953 for rndc) and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
 
 ```bash
 docker compose -f docker-compose-w-bind9.yml up -d

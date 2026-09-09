@@ -14,7 +14,7 @@
 
 services:
   bind9:
-    image: ubuntu/bind9:9.20-26.04
+    image: internetsystemsconsortium/bind9:9.18
     container_name: bind9
     restart: unless-stopped
     ports:
@@ -22,14 +22,14 @@ services:
       - "53:53/tcp"
       - "953:953"          # rndc control channel for the web-UI container
     volumes:
-      - ./docker/bind/named.conf:/etc/bind/named.conf:ro
-      - ./docker/bind/named.conf.options:/etc/bind/named.conf.options:ro
+      - ./docker/bind/named.conf:/etc/bind/named.conf:rw
+      - ./docker/bind/named.conf.options:/etc/bind/named.conf.options:rw
       - ./docker/bind/named.conf.local:/etc/bind/named.conf.local:rw
-      - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:ro
+      - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:rw
       - ./docker/bind/rndc.key:/etc/bind/rndc.key:ro
       - bind-zones:/etc/bind/zones       # writable area for zone files (db.<zone>)
       - bind-logs:/var/log/bind          # named.log read by the web UI
-    command: ["-4"]
+    # command: ["-4"]
 
   webui:
     image: ghcr.io/himalsimkhada/webui/bind9-webui:latest
@@ -57,8 +57,10 @@ services:
       WEBUI_PASSWORD: ${WEBUI_PASSWORD:-}
       SECRET_KEY: ${SECRET_KEY:-}
     volumes:
+      - ./docker/bind/named.conf:/etc/bind/named.conf:rw
+      - ./docker/bind/named.conf.options:/etc/bind/named.conf.options:rw
       - ./docker/bind/named.conf.local:/etc/bind/named.conf.local:rw
-      - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:ro
+      - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:rw
       - ./docker/bind/rndc.key:/etc/bind/rndc.key:ro
       - bind-zones:/etc/bind/zones
       - bind-logs:/var/log/bind
