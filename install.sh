@@ -16,6 +16,8 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/himalsimkhada/bind9-webui.git"
+WEBUI_REPO_URL="https://github.com/himalsimkhada/webui.git"
+WEBUI_PORT="${WEBUI_PORT:-8080}"
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
@@ -153,6 +155,51 @@ write_env_file() {
   info "Writing $envpath"
   cat > "$envpath"
   chmod 600 "$envpath" 2>/dev/null || true
+}
+
+# ── webui admin facade (companion dashboard) ────────────────────────────
+
+webui_detected() {
+  # True when the webui admin facade is already answering on the expected port.
+  if has_cmd curl && curl -fsS --max-time 3 "http://127.0.0.1:${WEBUI_PORT}/healthz" >/dev/null 2>&1; then
+    return 0
+  fi
+  if has_cmd docker && docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^webui-admin$'; then
+    return 0
+  fi
+  return 1
+}
+
+offer_webui_portal() {
+  # The dashboard UI lives in the companion webui facade. If it is not running,
+  # offer to install it now.
+  local tgt="$HOME/webui"
+  if webui_detected; then
+    ok "webui admin dashboard already running on http://127.0.0.1:${WEBUI_PORT}"
+    return
+  fi
+
+  if [ -d "$tgt" ] && [ -f "$tgt/install.sh" ]; then
+    warn "The webui admin dashboard is NOT running but a checkout exists at $tgt (port $WEBUI_PORT)."
+  else
+    warn "The webui admin dashboard (himalsimkhada/webui) was not detected on http://127.0.0.1:${WEBUI_PORT}."
+  fi
+  info "The BIND dashboard is hosted by the webui facade; without it you only get the API."
+  read -r -p "    Install the webui admin dashboard now? [Y/n] " ans
+  if [ "${ans:-y}" = "n" ] || [ "${ans:-y}" = "N" ]; then
+    warn "Install it later with:  curl -fsSL https://raw.githubusercontent.com/himalsimkhada/webui/main/install.sh | bash"
+    return
+  fi
+
+  has_cmd git || die "git is required to clone the webui dashboard."
+  mkdir -p "$HOME"
+  if [ ! -f "$tgt/install.sh" ]; then
+    info "Cloning $WEBUI_REPO_URL into $tgt"
+    git clone --quiet --depth 1 "$WEBUI_REPO_URL" "$tgt"
+  fi
+  info "Running the webui dashboard installer (choose Docker or Manual mode)"
+  bash "$tgt/install.sh"
+  ok "webui admin dashboard installed. Open http://localhost:${WEBUI_PORT}"
 }
 
 ensure_named_running() {
@@ -309,9 +356,11 @@ mode_docker_full() {
 WEBUI_PASSWORD=$WEBUI_PASSWORD
 SECRET_KEY=$SECRET_KEY
 EOF
-  info "Starting containers (this builds the API image on first run)"
-  docker compose -f docker-compose-w-bind9.yml up -d --build
+  info "Starting containers (pulls the API image on first run)"
+  docker compose -f docker-compose-w-bind9.yml up -d
   ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
+
+  offer_webui_portal
 }
 
 # ── Mode 2: Host BIND + Docker API ────────────────────────────────────────
@@ -338,11 +387,13 @@ WEBUI_PASSWORD=$WEBUI_PASSWORD
 SECRET_KEY=$SECRET_KEY
 EOF
 
-  info "Starting the API container (builds the image on first run)"
-  docker compose -f docker-compose.yml up -d --build
+  info "Starting the API container (pulls the image on first run)"
+  docker compose -f docker-compose.yml up -d
   ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
   ok "Mounted host BIND config from: $bdir"
   ok "Tailing logs from:             $ldir/named.log"
+
+  offer_webui_portal
 }
 
 # ── Mode 3: Manual (all on host) ─────────────────────────────────────────
@@ -393,6 +444,8 @@ EOF
   sudo systemctl restart bind9-webui
   ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
   ok "Manage with: sudo systemctl status bind9-webui"
+
+  offer_webui_portal
 }
 
 # ── Main menu / flags ────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Interactive installer** (`./install.sh`) — asks which of three deployments to run:
-  1. *Full Docker stack* — BIND9 + web UI containers; prompts for the UI password and runs `docker compose -f docker-compose-w-bind9.yml up -d --build`.
+  1. *Full Docker stack* — BIND9 + web UI containers; prompts for the UI password and runs `docker compose -f docker-compose-w-bind9.yml up -d`.
   2. *Host BIND + Docker* — detects OS / BIND config dir (`/etc/bind` vs `/etc/named`), checks/installs BIND, generates the rndc key, adds the restricted TCP 953 `controls` block and a file logging channel to named, writes `.env`, then runs the web-UI-only compose file.
   3. *Manual* — all on the host: detects OS, installs BIND9 + Python deps if missing, sets up a venv, writes the UI password/secret to `/etc/bind9-webui.env`, and installs the systemd service.
   - `./install.sh --check` prints detected distro / bind dir / log dir / rndc key / dependency status without making changes.

@@ -1,7 +1,7 @@
 # BIND9 Web UI — full stack: BIND9 name server + API backend container.
 #
 # Usage:
-#   docker compose -f docker-compose-w-bind9.yml up -d --build
+#   docker compose -f docker-compose-w-bind9.yml up -d
 # The API is then available at http://localhost:5000; the UI lives in the
 # webui facade (himalsimkhada/webui).
 #
@@ -32,7 +32,8 @@ services:
     command: ["-4"]
 
   webui:
-    build: .
+    image: ghcr.io/himalsimkhada/webui/bind9-webui:latest
+    # build: .   # optional: build the image from this repo instead of pulling
     container_name: bind9-webui
     restart: unless-stopped
     healthcheck:

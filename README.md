@@ -131,6 +131,11 @@ The API ends up on **port 5000**. To get the dashboard, point the
 > **Dry run first:** `./install.sh --check` reports what the installer detects
 > on your machine (distro, BIND config dir, log dir, rndc key, installed
 > dependencies) without changing a thing.
+>
+> **Dashboard included:** the installer detects when the companion webui admin
+> facade ([himalsimkhada/webui](https://github.com/himalsimkhada/webui)) is not
+> running and offers to install it for you — the portal hosts the dashboard UI,
+> while this service stays API-only.
 
 ---
 
@@ -164,7 +169,7 @@ The API runs against **either** a bare-metal BIND or an Ubuntu BIND container,
 Two containers, one command: the official `ubuntu/bind9` image (port 53 UDP/TCP + TCP 953 for rndc) and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
 
 ```bash
-docker compose -f docker-compose-w-bind9.yml up -d --build
+docker compose -f docker-compose-w-bind9.yml up -d
 ```
 
 > **Production note:** a pre-generated `rndc.key` ships under `docker/bind/`.
@@ -180,11 +185,11 @@ Run only the API image and point it at BIND that already runs on the host (or el
 ./install.sh     # choose 2) Host BIND + Docker
 ```
 
-The installer detects your OS and BIND config dir (`/etc/bind` on Debian/Ubuntu, `/etc/named` on RHEL/Arch), verifies BIND, adds a **restricted** rndc `controls` block, adds a file logging channel, writes `.env`, then `docker compose up -d --build`. Manually:
+The installer detects your OS and BIND config dir (`/etc/bind` on Debian/Ubuntu, `/etc/named` on RHEL/Arch), verifies BIND, adds a **restricted** rndc `controls` block, adds a file logging channel, writes `.env`, then `docker compose up -d`. Manually:
 
 ```bash
 cp .env.example .env    # RNDC_HOST defaults to host.docker.internal
-docker compose up -d --build
+docker compose up -d
 ```
 
 The compose file adds `extra_hosts: host.docker.internal → host-gateway`, so the container finds the Docker host automatically. If your Docker doesn't support `host-gateway`, set `RNDC_HOST` in `.env` to the host's LAN IP or the compose gateway.
