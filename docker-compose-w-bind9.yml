@@ -8,7 +8,8 @@
 # The web-UI container manages the BIND9 container over the rndc control
 # channel (TCP 953). The whole /etc/bind directory is a single named volume
 # (bind9-vol) shared by both containers — every config file, zone file and
-# the rndc key live there.
+# the rndc key live there. install.sh seeds that volume from ./docker/bind on
+# first run (the ISC image's own /etc/bind is nearly empty).
 #
 # If you instead run BIND on the host (bare-metal), use the web-UI-only
 # docker-compose.yml (see the README).
@@ -62,4 +63,5 @@ services:
 
 volumes:
   bind9-vol:
+    name: bind9-vol   # fixed name: install.sh seeds it from docker/bind once
   bind-logs:

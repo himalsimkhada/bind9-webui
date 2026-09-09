@@ -415,10 +415,28 @@ ensure_host_bind() {
 
 # ── Mode 1: Full Docker stack ────────────────────────────────────────────
 
+seed_bind_volume() {
+  # The full-stack compose keeps the whole /etc/bind in one named volume
+  # (bind9-vol). The ISC image's own /etc/bind only ships bind.keys +
+  # named.conf, so on first run we copy the shipped config files in.
+  local vol="bind9-vol"
+  if ! docker volume inspect "$vol" >/dev/null 2>&1; then
+    info "Initializing $vol from the shipped BIND config (docker/bind)"
+    docker run --rm --entrypoint sh \
+      -v "$vol":/etc/bind \
+      -v "$DIR/docker/bind":/seed:ro \
+      internetsystemsconsortium/bind9:9.18 -c 'cp -a /seed/. /etc/bind/'
+    ok "bind9-vol seeded — edit config with: docker run --rm -it -v bind9-vol:/etc/bind sh"
+  else
+    ok "bind9-vol already initialized"
+  fi
+}
+
 mode_docker_full() {
   info "Mode 1: Full Docker stack (BIND9 + API containers)"
   ensure_mode_files 1
   ensure_docker
+  seed_bind_volume
   ask_password
   write_env_file <<EOF
 WEBUI_PASSWORD=$WEBUI_PASSWORD
