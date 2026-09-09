@@ -1,13 +1,14 @@
 # BIND9 Web UI — full stack: BIND9 name server + API backend container.
 #
 # Usage:
-#   docker compose -f docker-compose-w-bind9.yml up -d
+#   docker compose up -d
 # The API is then available at http://localhost:5000; the UI lives in the
 # webui facade (himalsimkhada/webui).
 #
 # The web-UI container manages the BIND9 container over the rndc control
-# channel (TCP 953) and shares /etc/bind via host-mounted files + named
-# volumes for zone data and logs.
+# channel (TCP 953). The whole /etc/bind directory is a single named volume
+# (bind9-vol) shared by both containers — every config file, zone file and
+# the rndc key live there.
 #
 # If you instead run BIND on the host (bare-metal), use the web-UI-only
 # docker-compose.yml (see the README).
@@ -26,18 +27,8 @@ services:
       - "5353:53/tcp"
       - "9353:953"              # rndc control channel for the web-UI container
     volumes:
-      - ./docker/bind/named.conf:/etc/bind/named.conf:rw
-      - ./docker/bind/named.conf.options:/etc/bind/named.conf.options:rw
-      - ./docker/bind/named.conf.local:/etc/bind/named.conf.local:rw
-      - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:rw
-      - ./docker/bind/rndc.key:/etc/bind/rndc.key:ro
-      - ./docker/bind/root.hints:/etc/bind/root.hints:ro
-      - ./docker/bind/db.local:/etc/bind/db.local:ro
-      - ./docker/bind/db.127:/etc/bind/db.127:ro
-      - ./docker/bind/db.0:/etc/bind/db.0:ro
-      - ./docker/bind/db.255:/etc/bind/db.255:ro
-      - bind-zones:/etc/bind/zones       # writable area for zone files (db.<zone>)
-      - bind-logs:/var/log/bind          # named.log read by the web UI
+      - bind9-vol:/etc/bind          # the whole BIND config directory in one volume
+      - bind-logs:/var/log/bind      # named.log read by the web UI
     # command: ["-4"]
 
   webui:
@@ -66,14 +57,9 @@ services:
       WEBUI_PASSWORD: ${WEBUI_PASSWORD:-}
       SECRET_KEY: ${SECRET_KEY:-}
     volumes:
-      - ./docker/bind/named.conf:/etc/bind/named.conf:rw
-      - ./docker/bind/named.conf.options:/etc/bind/named.conf.options:rw
-      - ./docker/bind/named.conf.local:/etc/bind/named.conf.local:rw
-      - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:rw
-      - ./docker/bind/rndc.key:/etc/bind/rndc.key:ro
-      - bind-zones:/etc/bind/zones
+      - bind9-vol:/etc/bind          # same shared BIND config directory
       - bind-logs:/var/log/bind
 
 volumes:
-  bind-zones:
+  bind9-vol:
   bind-logs:

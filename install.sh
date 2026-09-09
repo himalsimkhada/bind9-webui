@@ -63,9 +63,13 @@ read_input() {
   fi
   if have_tty; then
     read -r -p "$prompt" "$var" < /dev/tty
-  else
-    die "No terminal available and \$$var was not set (${prompt%:}). Re-run from a terminal or set the env var."
+    return 0
   fi
+  if [ "$var" = "target" ]; then
+    printf -v "$var" '%s' "$PWD"   # headless default: install in the current dir
+    return 0
+  fi
+  die "No terminal available and \$$var was not set (${prompt%:}). Re-run from a terminal or set the env var."
 }
 
 read_input_silent() {
@@ -88,7 +92,7 @@ if [ ! -f "$DIR/docker-compose.yml" ] && [ ! -f "$DIR/docker-compose-w-bind9.yml
   has_cmd curl || has_cmd wget || die "curl or wget is required for the one-liner install."
   has_cmd git || warn "git is not installed — only the files needed by the installer will be fetched."
 
-  default_target="$HOME/bind9-webui"
+  default_target="$PWD"
   target=""
   read_input target "Install the project into [$default_target]: "
   target="${target:-$default_target}"
@@ -115,16 +119,27 @@ fetch_file() {
 }
 
 ensure_mode_files() {
+  # The compose file is always saved as docker-compose.yml — whatever mode is
+  # picked, `docker compose up` picks it up with no -f flag.
   local mode="$1"
   if [ "$mode" = "1" ]; then
-    [ -f "$DIR/docker-compose-w-bind9.yml" ] || fetch_file "docker-compose-w-bind9.yml"
+    # The full-stack manifest ships in the repo as docker-compose-w-bind9.yml.
+    if [ -f "$DIR/docker-compose-w-bind9.yml" ]; then
+      cp -f "$DIR/docker-compose-w-bind9.yml" "$DIR/docker-compose.yml"
+    elif has_cmd curl; then
+      curl -fsSL "$RAW_BASE/docker-compose-w-bind9.yml" -o "$DIR/docker-compose.yml"
+    elif has_cmd wget; then
+      wget -qO "$DIR/docker-compose.yml" "$RAW_BASE/docker-compose-w-bind9.yml"
+    else
+      die "curl or wget is required to fetch docker-compose.yml"
+    fi
     for f in named.conf named.conf.options named.conf.local named.conf.default-zones rndc.key root.hints db.local db.127 db.0 db.255; do
       [ -f "$DIR/docker/bind/$f" ] || fetch_file "docker/bind/$f"
     done
   else
     [ -f "$DIR/docker-compose.yml" ] || fetch_file "docker-compose.yml"
   fi
-  ok "Mode $mode files present in $DIR"
+  ok "Mode $mode files present in $DIR (compose file: docker-compose.yml)"
 }
 
 # ── System detection ─────────────────────────────────────────────────────
@@ -410,7 +425,7 @@ WEBUI_PASSWORD=$WEBUI_PASSWORD
 SECRET_KEY=$SECRET_KEY
 EOF
   info "Starting containers (pulls the API image on first run)"
-  docker compose -f docker-compose-w-bind9.yml up -d
+  docker compose -f docker-compose.yml up -d
   ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
   ok "DNS is published on host 127.0.0.1:5353 (rndc on 127.0.0.1:9353)"
 

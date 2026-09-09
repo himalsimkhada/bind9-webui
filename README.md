@@ -38,9 +38,9 @@ facade at `bind=http://…:5000` and you get the full BIND9 admin UI.
 
 ## Install — one line
 
-Copy-paste this. No cloning, no setup — the installer makes a directory
-(`~/bind9-webui`), fetches the compose file for the deployment you pick, then
-deploys:
+Copy-paste this. No cloning, no setup — the installer keeps the project in the
+directory you run it from, fetches the compose file (saved as
+`docker-compose.yml`) for the deployment you pick, then deploys:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
@@ -108,19 +108,19 @@ stays yours; the dashboard just makes it pleasant.
 
 ## Quick start
 
-Install in one command — the installer makes `~/bind9-webui` and fetches only the
-compose file (+ shared BIND config) for the mode you pick, no repo clone:
+Install in one command — the installer writes the project into the directory you
+run it from and saves the compose file (of the mode you pick) as
+`docker-compose.yml`, no repo clone:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
 ```
 
 Headless/scripted runs (no terminal) can skip the prompts with env vars —
-`BIND9_MODE` (1 or 2), `TARGET_DIR`, `WEBUI_PASSWORD`:
+`BIND9_MODE` (1 or 2), `TARGET_DIR` (default: current dir), `WEBUI_PASSWORD`:
 
 ```bash
 BIND9_MODE=1 WEBUI_PASSWORD='your-password' \
-  TARGET_DIR="$HOME/bind9-webui" \
   curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
 ```
 
@@ -185,11 +185,11 @@ Two containers, one command: the official `internetsystemsconsortium/bind9` imag
 > container's 53) and rndc on **127.0.0.1:9353** — non-default ports so the
 > stack never collides with systemd-resolved (53) or a host `named` (953). To
 > serve DNS at the standard port, edit the `ports:` block in
-> `docker-compose-w-bind9.yml` and map `53:53/udp` + `53:53/tcp`. To publish on
+> `docker-compose.yml` and map `53:53/udp` + `53:53/tcp`. To publish on
 > the LAN, use your machine's IP instead of `127.0.0.1`.
 
 ```bash
-docker compose -f docker-compose-w-bind9.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 > **Production note:** a pre-generated `rndc.key` ships under `docker/bind/`.
