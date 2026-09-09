@@ -446,6 +446,10 @@ WEBUI_PASSWORD=$WEBUI_PASSWORD
 SECRET_KEY=$SECRET_KEY
 EOF
   info "Starting containers (pulls the API image on first run)"
+  # Brings the project down first so the default network is recreated fresh:
+  # reusing a stale per-project network can crash-loop the BIND container
+  # (dies seconds after start, before named even opens its log).
+  docker compose -f docker-compose.yml down >/dev/null 2>&1 || true
   docker compose -f docker-compose.yml up -d
   ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
   ok "DNS is published on host 127.0.0.1:5353 (rndc on 127.0.0.1:9353)"
@@ -479,6 +483,7 @@ SECRET_KEY=$SECRET_KEY
 EOF
 
   info "Starting the API container (pulls the image on first run)"
+  docker compose -f docker-compose.yml down >/dev/null 2>&1 || true
   docker compose -f docker-compose.yml up -d
   ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
   ok "Mounted host BIND config from: $bdir"
