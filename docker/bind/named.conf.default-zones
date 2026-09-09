@@ -1,7 +1,7 @@
 // BIND9 Web UI — default/system zones for the dockerized BIND9 server.
 zone "." {
     type hint;
-    file "/usr/share/dns/root.hints";
+    file "/etc/bind/root.hints";
 };
 
 zone "localhost" {

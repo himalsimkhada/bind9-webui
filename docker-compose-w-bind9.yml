@@ -27,6 +27,11 @@ services:
       - ./docker/bind/named.conf.local:/etc/bind/named.conf.local:rw
       - ./docker/bind/named.conf.default-zones:/etc/bind/named.conf.default-zones:rw
       - ./docker/bind/rndc.key:/etc/bind/rndc.key:ro
+      - ./docker/bind/root.hints:/etc/bind/root.hints:ro
+      - ./docker/bind/db.local:/etc/bind/db.local:ro
+      - ./docker/bind/db.127:/etc/bind/db.127:ro
+      - ./docker/bind/db.0:/etc/bind/db.0:ro
+      - ./docker/bind/db.255:/etc/bind/db.255:ro
       - bind-zones:/etc/bind/zones       # writable area for zone files (db.<zone>)
       - bind-logs:/var/log/bind          # named.log read by the web UI
     # command: ["-4"]
