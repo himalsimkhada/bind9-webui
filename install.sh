@@ -42,25 +42,38 @@ die()   { printf '%s%s%s\n' "${C_RED}FATAL:$*${C_RESET}" >&2; exit 1; }
 has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 # ── Input helpers ────────────────────────────────────────────────────────
-# Under `curl ... | bash` stdin is the (already consumed) script stream, not
-# the terminal, so `read` from stdin would never show a prompt. Read from the
-# controlling terminal instead; fall back to stdin for non-interactive runs.
+# Under `curl ... | bash` stdin is the script stream, so bare `read` never
+# sees a prompt. Read from the controlling terminal when one exists. For
+# headless runs (no terminal) the variables below can be pre-set in the
+# environment instead of prompting.
+
+have_tty() { ( exec </dev/tty ) 2>/dev/null; }
 
 read_input() {
   local var="$1" prompt="${2:-}"
-  if ( exec </dev/tty ) 2>/dev/null; then
+  local envval=""
+  case "$var" in
+    target) envval="${TARGET_DIR:-}";;
+    choice) envval="${BIND9_MODE:-}";;
+    ans)    envval="${BIND9_YES:-}";;
+  esac
+  if [ -n "$envval" ]; then
+    printf -v "$var" '%s' "$envval"
+    return 0
+  fi
+  if have_tty; then
     read -r -p "$prompt" "$var" < /dev/tty
   else
-    read -r -p "$prompt" "$var"
+    die "No terminal available and \$$var was not set (${prompt%:}). Re-run from a terminal or set the env var."
   fi
 }
 
 read_input_silent() {
   local var="$1" prompt="${2:-}"
-  if ( exec </dev/tty ) 2>/dev/null; then
+  if have_tty; then
     read -r -s -p "$prompt" "$var" < /dev/tty
   else
-    read -r -s -p "$prompt" "$var"
+    die "No terminal available for password input. Set WEBUI_PASSWORD=... and re-run."
   fi
   echo ""
 }
@@ -178,20 +191,23 @@ random_secret() {
 }
 
 ask_password() {
-  # Prompts until a non-empty password is given; stores in WEBUI_PASSWORD.
-  WEBUI_PASSWORD=""
-  while [ -z "$WEBUI_PASSWORD" ]; do
-    read_input_silent WEBUI_PASSWORD "    Web UI password (used to log in): "
-    if [ -z "$WEBUI_PASSWORD" ]; then
-      warn "Password cannot be empty. Leave blank on the login page is not supported."
-    else
-      read_input_silent WEBUI_PASSWORD_CONFIRM "    Confirm password: "
-      if [ "$WEBUI_PASSWORD" != "$WEBUI_PASSWORD_CONFIRM" ]; then
-        warn "Passwords do not match. Try again."
-        WEBUI_PASSWORD=""
+  # Accepts WEBUI_PASSWORD from the environment (headless runs) or prompts.
+  if [ -z "${WEBUI_PASSWORD:-}" ]; then
+    while [ -z "$WEBUI_PASSWORD" ]; do
+      read_input_silent WEBUI_PASSWORD "    Web UI password (used to log in): "
+      if [ -z "$WEBUI_PASSWORD" ]; then
+        warn "Password cannot be empty."
+      else
+        read_input_silent WEBUI_PASSWORD_CONFIRM "    Confirm password: "
+        if [ "$WEBUI_PASSWORD" != "$WEBUI_PASSWORD_CONFIRM" ]; then
+          warn "Passwords do not match. Try again."
+          WEBUI_PASSWORD=""
+        fi
       fi
-    fi
-  done
+    done
+  else
+    ok "Using WEBUI_PASSWORD from the environment"
+  fi
   SECRET_KEY="$(random_secret)"
 }
 

@@ -115,6 +115,15 @@ compose file (+ shared BIND config) for the mode you pick, no repo clone:
 curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
 ```
 
+Headless/scripted runs (no terminal) can skip the prompts with env vars —
+`BIND9_MODE` (1 or 2), `TARGET_DIR`, `WEBUI_PASSWORD`:
+
+```bash
+BIND9_MODE=1 WEBUI_PASSWORD='your-password' \
+  TARGET_DIR="$HOME/bind9-webui" \
+  curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
+```
+
 Or clone and run directly:
 
 ```bash
