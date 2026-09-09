@@ -17,6 +17,8 @@ ZONE_CACHE_DIR = "/var/cache/bind"
 # Where zone data files (db.<zone>) are written. Defaults to BIND_CONF_DIR for
 # bare-metal; override to a shared writable volume in Docker (ZONE_DIR).
 ZONE_DIR = os.environ.get("ZONE_DIR", BIND_CONF_DIR)
+# Ensure the zone-data directory exists (fresh shared volumes start without it).
+os.makedirs(ZONE_DIR, exist_ok=True)
 RNDCTIMEOUT = 5
 
 _IS_ROOT = hasattr(os, "geteuid") and os.geteuid() == 0

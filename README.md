@@ -179,7 +179,7 @@ The API runs against **either** a bare-metal BIND or a BIND container,
 
 ### Option 1 — Full Docker stack
 
-Two containers, one command: the official `internetsystemsconsortium/bind9` image and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
+Two containers, one command: the official `internetsystemsconsortium/bind9` image and this project's API (port 5000). Both mount the same named volume `bind9-vol` at `/etc/bind` (the whole BIND config in one place); on first install, `install.sh` seeds it from `./docker/bind/` (and creates the shared `/etc/bind/zones` for user zones). The API drives BIND over `rndc -s bind9 -p 953`; logs live in the `bind-logs` named volume at `/var/log/bind`.
 
 > **Ports:** DNS is published on host **127.0.0.1:5353** (TCP/UDP, mapped to the
 > container's 53) and rndc on **127.0.0.1:9353** — non-default ports so the

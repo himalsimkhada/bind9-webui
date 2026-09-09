@@ -425,7 +425,10 @@ seed_bind_volume() {
     docker run --rm --entrypoint sh \
       -v "$vol":/etc/bind \
       -v "$DIR/docker/bind":/seed:ro \
-      internetsystemsconsortium/bind9:9.18 -c 'cp -a /seed/. /etc/bind/'
+      internetsystemsconsortium/bind9:9.18 -c '\
+        cp -a /seed/. /etc/bind/ && \
+        mkdir -p /etc/bind/zones && \
+        chown -R 53:53 /etc/bind/zones'
     ok "bind9-vol seeded — edit config with: docker run --rm -it -v bind9-vol:/etc/bind sh"
   else
     ok "bind9-vol already initialized"
