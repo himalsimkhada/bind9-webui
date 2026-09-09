@@ -172,7 +172,9 @@ The API runs against **either** a bare-metal BIND or an Ubuntu BIND container,
 
 ### Option 1 — Full Docker stack
 
-Two containers, one command: the official `internetsystemsconsortium/bind9` image (port 53 UDP/TCP + TCP 953 for rndc) and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
+Two containers, one command: the official `internetsystemsconsortium/bind9` image (DNS on 127.0.0.1:53 UDP/TCP + TCP 953 for rndc) and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
+
+> **Why 127.0.0.1?** systemd-resolved (and WLAN helpers) usually already hold a socket on port 53, which blocks a wildcard `0.0.0.0:53` publish (`address already in use`). The compose publishes DNS/rndc on loopback — to serve your LAN, just change the host IP in the `ports:` block (e.g. `192.168.1.5:53:53`).
 
 ```bash
 docker compose -f docker-compose-w-bind9.yml up -d
