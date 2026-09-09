@@ -18,14 +18,13 @@ services:
     container_name: bind9
     restart: unless-stopped
     ports:
-      # DNS + rndc are published on 127.0.0.1 by default: on most Linux
-      # distros systemd-resolved/wifi-managers already hold a socket on
-      # port 53, which makes docker's wildcard publish fail with
-      # 'address already in use'. Point 127.0.0.1 at your LAN IP (e.g.
-      # "192.168.1.5:53:53") to serve the network.
-      - "127.0.0.1:53:53/udp"
-      - "127.0.0.1:53:53/tcp"
-      - "127.0.0.1:953:953" # rndc control channel for the web-UI container
+      # DNS + rndc are published on non-default host ports (5353 / 9353) so
+      # nothing on the host collides with them (systemd-resolved already holds
+      # 53, and 953 is the classic rndc port). To serve DNS on the standard
+      # port 53 instead, map "53:53/udp" and "53:53/tcp" here.
+      - "5353:53/udp"
+      - "5353:53/tcp"
+      - "9353:953"              # rndc control channel for the web-UI container
     volumes:
       - ./docker/bind/named.conf:/etc/bind/named.conf:rw
       - ./docker/bind/named.conf.options:/etc/bind/named.conf.options:rw

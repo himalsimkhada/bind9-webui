@@ -5,10 +5,13 @@
 # This service is the API-only backend; the user interface lives in the
 # companion webui facade (himalsimkhada/webui), which proxies to it.
 #
-# Offers three deployment modes:
+# Offers two deployment modes:
 #   1. Full Docker stack   : BIND9 container + API container
 #   2. Host BIND + Docker  : manage an existing HOST BIND with the API container
-#   3. Manual (all-host)   : BIND + API installed directly on this machine
+#
+# The one-liner does NOT clone the repository: it creates a directory
+# (default ~/bind9-webui) and fetches only the compose file (+ shared BIND
+# config for mode 1) needed for the mode you pick.
 #
 # Usage:  sudo ./install.sh   (or: ./install.sh --check | --help)
 # One-liner:  curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
@@ -16,6 +19,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/himalsimkhada/bind9-webui.git"
+RAW_BASE="https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main"
 WEBUI_REPO_URL="https://github.com/himalsimkhada/webui.git"
 WEBUI_PORT="${WEBUI_PORT:-8080}"
 
@@ -37,32 +41,78 @@ die()   { printf '%s%s%s\n' "${C_RED}FATAL:$*${C_RESET}" >&2; exit 1; }
 
 has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
-# ── Self-bootstrap ────────────────────────────────────────────────────────
-# Support one-liner installs (curl ... | bash): when the script is streamed
-# there is no repo checkout in $DIR, so fetch the repository first and then
-# re-run this installer from inside it (finishes with the user's chosen mode).
+# ── Input helpers ────────────────────────────────────────────────────────
+# Under `curl ... | bash` stdin is the (already consumed) script stream, not
+# the terminal, so `read` from stdin would never show a prompt. Read from the
+# controlling terminal instead; fall back to stdin for non-interactive runs.
 
-if [ ! -f "$DIR/app.py" ] || [ ! -f "$DIR/docker-compose.yml" ]; then
-  echo "==> One-liner install: no repo checkout in \"$DIR\"."
-  has_cmd git || die "git is required for the one-liner install (curl | bash)."
-  has_cmd curl || has_cmd wget || warn "Neither curl nor wget found; check the URL you piped."
+read_input() {
+  local var="$1" prompt="${2:-}"
+  if [ -e /dev/tty ]; then
+    read -r -p "$prompt" "$var" < /dev/tty
+  else
+    read -r -p "$prompt" "$var"
+  fi
+}
+
+read_input_silent() {
+  local var="$1" prompt="${2:-}"
+  if [ -e /dev/tty ]; then
+    read -r -s -p "$prompt" "$var" < /dev/tty
+  else
+    read -r -s -p "$prompt" "$var"
+  fi
+  echo ""
+}
+
+# ── Streaming bootstrap ──────────────────────────────────────────────────
+# Runs when the script is streamed (curl ... | bash) and there is no local
+# checkout: ask where to install, create that directory and fetch the files
+# for the chosen mode later (ensure_mode_files). No full repo clone.
+
+if [ ! -f "$DIR/docker-compose.yml" ] && [ ! -f "$DIR/docker-compose-w-bind9.yml" ]; then
+  echo "==> One-liner install: no project checkout in \"$DIR\"."
+  has_cmd curl || has_cmd wget || die "curl or wget is required for the one-liner install."
+  has_cmd git || warn "git is not installed — only the files needed by the installer will be fetched."
 
   default_target="$HOME/bind9-webui"
   target=""
-  read -r -p "Install the project into [$default_target]: " target
+  read_input target "Install the project into [$default_target]: "
   target="${target:-$default_target}"
 
-  mkdir -p "$(dirname "$target")"
-  if [ -d "$target" ] && [ -f "$target/app.py" ]; then
-    info "Updating existing checkout at $target"
-    (cd "$target" && git pull --ff-only) >/dev/null 2>&1 || true
-  else
-    info "Cloning $REPO_URL into $target"
-    git clone --quiet --depth 1 "$REPO_URL" "$target"
-  fi
+  mkdir -p "$target"
   cd "$target"
-  exec bash "$target/install.sh" "$@"
+  DIR="$target"
+  info "Project dir: $DIR (the compose file is fetched for the mode you choose)"
 fi
+
+# ── File fetch (no repo clone) ───────────────────────────────────────────
+
+fetch_file() {
+  local rel="$1"
+  local dest="$DIR/$rel"
+  mkdir -p "$(dirname "$dest")"
+  if has_cmd curl; then
+    curl -fsSL "$RAW_BASE/$rel" -o "$dest"
+  elif has_cmd wget; then
+    wget -qO "$dest" "$RAW_BASE/$rel"
+  else
+    die "curl or wget is required to fetch $rel"
+  fi
+}
+
+ensure_mode_files() {
+  local mode="$1"
+  if [ "$mode" = "1" ]; then
+    [ -f "$DIR/docker-compose-w-bind9.yml" ] || fetch_file "docker-compose-w-bind9.yml"
+    for f in named.conf named.conf.options named.conf.local named.conf.default-zones rndc.key root.hints db.local db.127 db.0 db.255; do
+      [ -f "$DIR/docker/bind/$f" ] || fetch_file "docker/bind/$f"
+    done
+  else
+    [ -f "$DIR/docker-compose.yml" ] || fetch_file "docker-compose.yml"
+  fi
+  ok "Mode $mode files present in $DIR"
+}
 
 # ── System detection ─────────────────────────────────────────────────────
 
@@ -117,8 +167,6 @@ rndc_key_path() {
   if is_deb; then echo "$dir/rndc.key"; else echo "/etc/rndc.key"; fi
 }
 
-named_service() { echo "named"; }
-
 # ── Generic helpers ──────────────────────────────────────────────────────
 
 random_secret() {
@@ -133,13 +181,11 @@ ask_password() {
   # Prompts until a non-empty password is given; stores in WEBUI_PASSWORD.
   WEBUI_PASSWORD=""
   while [ -z "$WEBUI_PASSWORD" ]; do
-    read -r -s -p "    Web UI password (used to log in): " WEBUI_PASSWORD
-    echo ""
+    read_input_silent WEBUI_PASSWORD "    Web UI password (used to log in): "
     if [ -z "$WEBUI_PASSWORD" ]; then
       warn "Password cannot be empty. Leave blank on the login page is not supported."
     else
-      read -r -s -p "    Confirm password: " WEBUI_PASSWORD_CONFIRM
-      echo ""
+      read_input_silent WEBUI_PASSWORD_CONFIRM "    Confirm password: "
       if [ "$WEBUI_PASSWORD" != "$WEBUI_PASSWORD_CONFIRM" ]; then
         warn "Passwords do not match. Try again."
         WEBUI_PASSWORD=""
@@ -185,7 +231,8 @@ offer_webui_portal() {
     warn "The webui admin dashboard (himalsimkhada/webui) was not detected on http://127.0.0.1:${WEBUI_PORT}."
   fi
   info "The BIND dashboard is hosted by the webui facade; without it you only get the API."
-  read -r -p "    Install the webui admin dashboard now? [Y/n] " ans
+  ans=""
+  read_input ans "    Install the webui admin dashboard now? [Y/n] "
   if [ "${ans:-y}" = "n" ] || [ "${ans:-y}" = "N" ]; then
     warn "Install it later with:  curl -fsSL https://raw.githubusercontent.com/himalsimkhada/webui/main/install.sh | bash"
     return
@@ -285,7 +332,8 @@ add_rndc_controls() {
 ensure_docker() {
   if ! has_cmd docker || ! docker compose version >/dev/null 2>&1; then
     warn "Docker with the compose plugin is required but not installed."
-    read -r -p "    Install Docker now? [y/N] " ans
+    ans=""
+    read_input ans "    Install Docker now? [y/N] "
     if [ "${ans:-n}" != "y" ] && [ "${ans:-n}" != "Y" ]; then
       die "Docker is required for this mode. Re-run after installing Docker."
     fi
@@ -321,7 +369,8 @@ ensure_docker() {
 ensure_host_bind() {
   if ! has_cmd named; then
     warn "BIND9 (named) is not installed."
-    read -r -p "    Install BIND9 now? [y/N] " ans
+    ans=""
+    read_input ans "    Install BIND9 now? [y/N] "
     if [ "${ans:-n}" != "y" ] && [ "${ans:-n}" != "Y" ]; then
       die "BIND9 is required for this mode."
     fi
@@ -332,24 +381,11 @@ ensure_host_bind() {
   ensure_rndc_key
 }
 
-ensure_python_tools() {
-  if ! has_cmd python3; then
-    info "Installing python3"
-  fi
-  if is_deb; then
-    pkg_install python3 python3-venv
-  elif is_rpm; then
-    pkg_install python3 python3-pip
-  elif is_arch; then
-    pkg_install python python-virtualenv
-  fi
-  has_cmd python3 || die "python3 is required"
-}
-
 # ── Mode 1: Full Docker stack ────────────────────────────────────────────
 
 mode_docker_full() {
   info "Mode 1: Full Docker stack (BIND9 + API containers)"
+  ensure_mode_files 1
   ensure_docker
   ask_password
   write_env_file <<EOF
@@ -359,6 +395,7 @@ EOF
   info "Starting containers (pulls the API image on first run)"
   docker compose -f docker-compose-w-bind9.yml up -d
   ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
+  ok "DNS is published on host 127.0.0.1:5353 (rndc on 127.0.0.1:9353)"
 
   offer_webui_portal
 }
@@ -367,6 +404,7 @@ EOF
 
 mode_host_bind_docker() {
   info "Mode 2: Host BIND9 + API container"
+  ensure_mode_files 2
   ensure_docker
   ensure_host_bind
   ensure_named_running
@@ -396,58 +434,6 @@ EOF
   offer_webui_portal
 }
 
-# ── Mode 3: Manual (all on host) ─────────────────────────────────────────
-
-mode_manual() {
-  info "Mode 3: Manual install (BIND + API on this machine)"
-  ensure_host_bind
-  ensure_named_running
-  add_logging_channel
-  ensure_python_tools
-
-  info "Setting up Python venv"
-  python3 -m venv venv
-  ./venv/bin/pip install -q -r requirements.txt
-  ok "Dependencies installed"
-
-  ask_password
-  info "Writing credentials to /etc/bind9-webui.env"
-  local envout="/etc/bind9-webui.env"
-  sudo tee "$envout" >/dev/null <<EOF
-WEBUI_PASSWORD=$WEBUI_PASSWORD
-SECRET_KEY=$SECRET_KEY
-EOF
-  sudo chmod 600 "$envout"
-
-  info "Installing systemd service"
-  {
-    echo "[Unit]"
-    echo "Description=BIND9 Web UI (API backend)"
-    echo "After=network.target named.service"
-    echo "Requires=named.service"
-    echo ""
-    echo "[Service]"
-    echo "Type=simple"
-    echo "User=root"
-    echo "WorkingDirectory=$DIR"
-    echo "ExecStart=$DIR/venv/bin/python3 app.py"
-    echo "EnvironmentFile=-/etc/bind9-webui.env"
-    echo "Restart=on-failure"
-    echo "RestartSec=5"
-    echo ""
-    echo "[Install]"
-    echo "WantedBy=multi-user.target"
-  } | sudo tee /etc/systemd/system/bind9-webui.service >/dev/null
-
-  sudo systemctl daemon-reload
-  sudo systemctl enable bind9-webui
-  sudo systemctl restart bind9-webui
-  ok "Deployed. API at http://localhost:5000 (UI lives in the webui facade)"
-  ok "Manage with: sudo systemctl status bind9-webui"
-
-  offer_webui_portal
-}
-
 # ── Main menu / flags ────────────────────────────────────────────────────
 
 show_menu() {
@@ -456,15 +442,14 @@ show_menu() {
   echo ""
   echo "  1) Full Docker stack   - BIND9 and the API both in containers"
   echo "  2) Host BIND + Docker  - API container managing BIND installed on this machine"
-  echo "  3) Manual              - BIND and the API both installed directly on this machine"
   echo ""
   while :; do
-    read -r -p "Enter your choice [1-3]: " choice
+    choice=""
+    read_input choice "Enter your choice [1-2]: "
     case "$choice" in
       1) mode_docker_full; return;;
       2) mode_host_bind_docker; return;;
-      3) mode_manual; return;;
-      *) warn "Please choose 1, 2 or 3.";;
+      *) warn "Please choose 1 or 2.";;
     esac
   done
 }
@@ -487,18 +472,13 @@ do_check() {
   else
     echo "Docker+compose: missing"
   fi
-  if has_cmd python3; then
-    echo "python3       : $(command -v python3)"
-  else
-    echo "python3       : missing"
-  fi
   echo ""
 }
 
 case "${1:-}" in
   --check|-c) do_check; exit 0;;
   --help|-h)
-    sed -n '1,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+    sed -n '1,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
   "")
     if [ "$(id -u)" -eq 0 ]; then
       warn "Running as root. Prefer running as a normal sudo user on some distros."

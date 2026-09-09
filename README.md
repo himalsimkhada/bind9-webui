@@ -38,8 +38,9 @@ facade at `bind=http://…:5000` and you get the full BIND9 admin UI.
 
 ## Install — one line
 
-Copy-paste this. No cloning, no setup — the installer bootstraps itself, then asks
-which of the three deployments you want:
+Copy-paste this. No cloning, no setup — the installer makes a directory
+(`~/bind9-webui`), fetches the compose file for the deployment you pick, then
+deploys:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
@@ -59,7 +60,6 @@ curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/inst
 - [Deployment options](#deployment-options)
   - [1. Full Docker stack](#option-1--full-docker-stack)
   - [2. Host BIND + Docker](#option-2--host-bind--docker)
-  - [3. Manual (bare-metal)](#option-3--manual-bare-metal)
 - [Configuration](#configuration)
 - [Security notes](#security-notes)
 - [API reference](#api-reference)
@@ -108,7 +108,8 @@ stays yours; the dashboard just makes it pleasant.
 
 ## Quick start
 
-Install in one command — the installer **bootstraps itself** when streamed, cloning the repo before it runs:
+Install in one command — the installer makes `~/bind9-webui` and fetches only the
+compose file (+ shared BIND config) for the mode you pick, no repo clone:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/himalsimkhada/bind9-webui/main/install.sh | bash
@@ -127,7 +128,6 @@ You'll be asked which deployment you want:
 ```
   1) Full Docker stack   - BIND9 and the API both in containers
   2) Host BIND + Docker  - API container managing BIND on this machine
-  3) Manual              - BIND and the API both directly on this machine
 ```
 
 The API ends up on **port 5000**. To get the dashboard, point the
@@ -148,7 +148,6 @@ The API ends up on **port 5000**. To get the dashboard, point the
 ## Requirements
 
 - Linux with BIND9 installed (`apt install bind9 bind9-dnsutils`)
-- Python 3.10+ (manual mode only)
 - `sudo` access (for `rndc` and named config files)
 - Docker is **optional** — needed only for the containerized deployments
 
@@ -158,7 +157,7 @@ Supported distros: Debian/Ubuntu (apt), RHEL/Fedora (dnf), Arch (pacman).
 
 ## Deployment options
 
-The API runs against **either** a bare-metal BIND or an Ubuntu BIND container,
+The API runs against **either** a bare-metal BIND or a BIND container,
 **without code changes** — it talks to `named` through whichever transport you configure:
 
 - **Local (bare-metal):** `rndc` over the local UNIX control socket, reading/writing `/etc/bind/`.
@@ -168,13 +167,17 @@ The API runs against **either** a bare-metal BIND or an Ubuntu BIND container,
 |---|---|---|
 | **1. Full Docker stack** | BIND9 + API, two containers | You want zero DNS tooling on the host |
 | **2. Host BIND + Docker** | API in a container, BIND on the host | You keep your existing BIND, backend stays containerized |
-| **3. Manual** | Everything on this machine, systemd service | Minimal footprint, single server |
 
 ### Option 1 — Full Docker stack
 
-Two containers, one command: the official `internetsystemsconsortium/bind9` image (DNS on 127.0.0.1:53 UDP/TCP + TCP 953 for rndc) and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
+Two containers, one command: the official `internetsystemsconsortium/bind9` image and this project's API (port 5000). They share `./docker/bind/` config and two named volumes (`bind-zones`, `bind-logs`); the API drives BIND over `rndc -s bind9 -p 953`.
 
-> **Why 127.0.0.1?** systemd-resolved (and WLAN helpers) usually already hold a socket on port 53, which blocks a wildcard `0.0.0.0:53` publish (`address already in use`). The compose publishes DNS/rndc on loopback — to serve your LAN, just change the host IP in the `ports:` block (e.g. `192.168.1.5:53:53`).
+> **Ports:** DNS is published on host **127.0.0.1:5353** (TCP/UDP, mapped to the
+> container's 53) and rndc on **127.0.0.1:9353** — non-default ports so the
+> stack never collides with systemd-resolved (53) or a host `named` (953). To
+> serve DNS at the standard port, edit the `ports:` block in
+> `docker-compose-w-bind9.yml` and map `53:53/udp` + `53:53/tcp`. To publish on
+> the LAN, use your machine's IP instead of `127.0.0.1`.
 
 ```bash
 docker compose -f docker-compose-w-bind9.yml up -d
@@ -220,35 +223,6 @@ logging {
     category default { bind_webui_file; };
     category queries { bind_webui_file; };
 };
-```
-
-### Option 3 — Manual (bare-metal)
-Everything on this one machine, managed as a systemd service. API at `http://localhost:5000`.
-
-```bash
-./install.sh     # choose 3) Manual
-```
-
-The installer detects your OS, installs BIND9 + Python deps if missing, prompts for the UI password, and installs the systemd unit. By hand:
-
-```bash
-sudo apt install bind9 bind9utils bind9-dnsutils python3-venv
-sudo rndc-confgen -a
-sudo chmod 640 /etc/bind/rndc.key && sudo chown root:bind /etc/bind/rndc.key
-sudo systemctl start named
-
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
-
-WEBUI_PASSWORD='your-password' SECRET_KEY='a-long-random-string' ./venv/bin/python3 app.py
-```
-
-As a boot-starting service:
-
-```bash
-sudo cp bind9-webui.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now bind9-webui
 ```
 
 ---
@@ -354,7 +328,7 @@ bind9-webui/
 ├── docker-compose.yml      # API container managing host/remote BIND over TCP rndc
 ├── docker-compose-w-bind9.yml  # Full stack: BIND9 container + API
 ├── docker/bind/            # Config/rndc.key shared with the BIND container
-├── install.sh              # bootstrapping one-shot installer (--check safe)
+├── install.sh              # one-shot installer (fetch-based, --check safe)
 └── bind9-webui.service     # Systemd unit file
 ```
 
